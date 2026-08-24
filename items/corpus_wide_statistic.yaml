@@ -1,0 +1,182 @@
+# =====================================================================
+# FAMILY 3 -- corpus_wide_statistic
+#
+# Requires the whole corpus. "Median hold period across all exits." "How many
+# deals were passed on in specialty manufacturing?" Gold is computed from the
+# ledger; the grader compares numerically within tolerance.
+#
+# COUNTS ARE EXACT. Whenever `gold.unit` is `count`, the grader forces zero
+# tolerance regardless of the family default. A tolerance on a count silently
+# awards credit for miscounting.
+#
+# ---------------------------------------------------------------------
+# HOW TO ADD A TEMPLATE
+# ---------------------------------------------------------------------
+# Same shape as multi_doc_aggregation. The difference is scope: a template
+# here should select a whole population -- every deal, every exit, every pass
+# -- with no year or sector narrowing. If the selector has a `year`, it
+# probably belongs in family 2.
+#
+#   - id: cws-06
+#     difficulty: hard
+#     answer_type: numeric
+#     questions: ["..."]
+#     selector: {source: deals, where: {...}}
+#     gold: {aggregate: {op: median, field: ..., round: 2}, unit: years}
+#
+# `_derived.*` fields are computed at load time by harness/ledger.py and can be
+# used exactly like native fields:
+#   _derived.hold_period_years   _derived.hold_period_months
+#   _derived.exit_multiple       _derived.exit_moic
+#   _derived.has_exit            _derived.is_pass       _derived.is_screen
+#   _derived.is_thin             _derived.implied_margin_pct
+#   _derived.implied_ev_m
+# =====================================================================
+
+family: corpus_wide_statistic
+version: 1
+answer_format: |
+  ANSWER: <single value>
+  <then normal prose reasoning>
+
+templates:
+
+  - id: cws-01-median-hold-period
+    difficulty: hard
+    answer_type: numeric
+    questions:
+      - "What is the median hold period across all of Westbrook's exits?"
+      - "Across everything Westbrook has sold, what is the median hold period in years?"
+    selector:
+      source: deals
+      where:
+        _derived.has_exit: {op: truthy, value: true}
+    gold:
+      aggregate: {op: median, field: _derived.hold_period_years, round: 2}
+      unit: years
+    grading:
+      tolerance: {abs: 0.1, rel: 0.0}
+    notes: >-
+      Hold period is not stored anywhere; it is derived from entry date and
+      exit date, so a correct answer requires finding both ends of every
+      realised deal. Tolerance is 0.1 years because a model working in whole
+      months will land slightly off.
+      WATCH THE CANDIDATE COUNT. Exits are rare in this corpus. If validation
+      shows fewer than about 8 exits, a median over them is a fragile statistic
+      and this template should be demoted or the question reworded to a count.
+
+  # -------------------------------------------------------------------
+  # REPLACEMENTS FOR THE POPULATIONS THAT ARE NOT FULLY DOCUMENTED
+  # -------------------------------------------------------------------
+  # cws-02..cws-05 aggregate over `deals` populations that each contain rows
+  # with no corpus document: 105 of cws-05's 1,458, 20-28 of each cws-02 sector.
+  # A statistic whose true value depends on rows no arm can retrieve has an
+  # unobtainable gold -- a perfect searcher gets it wrong -- so the grounding
+  # gate drops them to zero. They are kept in the file, unadmitted, because
+  # deleting them would hide the finding.
+  #
+  # The templates below aggregate over the populations that ARE fully
+  # documented. Those are few, and this family is small as a result: a
+  # corpus-wide statistic is one question per population, and any slice of a
+  # population is contained in it, so the overlap rule admits the slices or the
+  # whole but not both. Family 3 being small is a property of the corpus, not a
+  # failure of the templates.
+
+  - id: cws-06-portfolio-current-retention
+    difficulty: hard
+    answer_type: numeric
+    questions:
+      - "Across the whole portfolio, what is the median gross retention today?"
+      - "Taking every company Westbrook currently holds and has held, what is the median current gross retention?"
+    selector:
+      source: portfolio_companies
+      where:
+        _derived.current.gross_retention_pct: {op: not_null}
+    gold:
+      aggregate: {op: median, field: _derived.current.gross_retention_pct, round: 1}
+      unit: percent
+    gates:
+      grounding:
+        codename_field: deal_codename
+        require_doc: true
+    notes: >-
+      Requires the LATEST quarter for every portfolio company, not the entry
+      figure. Both are in the file and they differ for all eleven, so an arm
+      that averages whatever retention number it finds first lands wrong. All
+      eleven companies are fully documented, which is why this population
+      survives the grounding gate when the deal-level ones do not.
+
+  - id: cws-07-mandate-count-no-sale
+    difficulty: medium
+    answer_type: numeric
+    questions:
+      - "How many of Halloran's sell-side mandates ended without a sale?"
+      - "Across every mandate Halloran has run, how many failed to close?"
+    selector:
+      source: deals
+      where:
+        firm: halloran
+        stage: mandate
+        process: {op: exists}
+        outcome: {op: in, values: [no-sale, withdrawn]}
+    gold:
+      aggregate: {op: count}
+      unit: count
+    grading:
+      tolerance: {abs: 0.0, rel: 0.0}
+    gates:
+      grounding:
+        require_doc: true
+    notes: >-
+      A count, so the grader forces exact matching. Every one of the 68 v4
+      mandates is documented, so unlike the Westbrook screening populations
+      this count is actually obtainable. The 33 legacy Halloran mandate rows
+      have no documents at all and are excluded by `process: exists`, which is
+      a real structural distinction in the ledger rather than a filter chosen
+      to make the number work.
+
+  - id: cws-08-mean-success-fee
+    difficulty: hard
+    answer_type: numeric
+    questions:
+      - "What success fee does Halloran charge on average across its mandates?"
+      - "Across every Halloran engagement, what is the mean success fee percentage?"
+    selector:
+      source: deals
+      where:
+        firm: halloran
+        stage: mandate
+        engagement.success_fee_pct: {op: not_null}
+    gold:
+      aggregate: {op: mean, field: engagement.success_fee_pct, round: 2}
+      unit: percent
+    gates:
+      grounding:
+        require_doc: true
+    notes: >-
+      Engagement economics sit in one field per mandate and nowhere else in
+      aggregate, so the answer requires assembling all 68 rather than reading a
+      summary. Disjoint from cws-07's population only in part -- the overlap
+      rule decides whether both can be admitted, and it is computed jointly
+      with family 2 rather than within this file.
+
+  # -------------------------------------------------------------------
+  # DELETED 2026-08-19: cws-02-count-passes-by-sector,
+  #                     cws-03-mean-entry-multiple-all,
+  #                     cws-04-most-common-kill,
+  #                     cws-05-count-thin-screens
+  # -------------------------------------------------------------------
+  # All four aggregate over `deals` populations that contain rows with no
+  # corpus document: 105 of cws-05's 1,458, 105 of cws-04's 1,445, 4 of
+  # cws-03's 37, and 20-28 of each cws-02 sector. 168 of the 1,670 ledger
+  # deals appear in no document at all, spread evenly across every year.
+  #
+  # A statistic whose true value depends on rows no arm can retrieve has an
+  # UNOBTAINABLE gold: a perfect searcher gets it wrong, and the item measures
+  # the corpus gap rather than the model. All four measured 0 defensible units.
+  #
+  # They were not repaired by narrowing, because narrowing to the documented
+  # subset would change the gold from "the firm's history" to "the part of the
+  # firm's history that happens to be filed", which is a different and much
+  # less interesting question, and would be exactly the kind of quiet
+  # loosening this build refuses. They are deleted and the family is smaller.

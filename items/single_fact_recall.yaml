@@ -1,0 +1,296 @@
+# =====================================================================
+# FAMILY 1 -- single_fact_recall
+#
+# The answer sits in one document. Gold is one ledger field.
+# Grader: numeric match with tolerance, or exact string for categoricals.
+#
+# Both arms can search the same corpus, so a tie is the expected outcome here.
+# A large gap is more likely a harness bug than a capability difference, and
+# should be investigated as one before it is reported as a result.
+#
+# That is a statement about what this family PREDICTS, not about its rank. The
+# six families are of equal standing and are never averaged.
+#
+# ---------------------------------------------------------------------
+# HOW TO ADD A TEMPLATE
+# ---------------------------------------------------------------------
+# Copy any block below and edit it. Nothing in Python needs to change.
+#
+#   - id: sfr-06                       # unique; prefix by family
+#     difficulty: easy | medium | hard
+#     answer_type: numeric | categorical | list
+#     questions:                       # one or more phrasings; the generator
+#       - "...{{slot}}..."             # picks among them
+#     slots:
+#       codename: codename             # shorthand: slot <- row field
+#       year: {from: deals.year, choose: [2023, 2024]}   # or a chosen value
+#     selector:
+#       source: deals                  # any ledger collection
+#       where:                         # see harness/query.py for all operators
+#         stage: closed                #   shorthand equality
+#         numbers.entry_multiple: {op: not_null}
+#     gold:
+#       path: numbers.entry_multiple   # one field off the selected row
+#       unit: multiple                 # multiple|percent|money_m|count|years
+#     grading:
+#       tolerance: {abs: 0.05, rel: 0.0}   # optional; overrides config
+#
+# Operators available in `where`: eq ne in not_in gt gte lt lte between
+# contains regex exists not_null is_null list_contains list_len truthy.
+#
+# Check your edits without generating anything:
+#     python -m harness.cli validate-templates
+# It prints how many ledger rows each template would draw from and whether
+# the gold answer is computable.
+# =====================================================================
+
+family: single_fact_recall
+version: 1
+answer_format: |
+  ANSWER: <single value>
+  <then normal prose reasoning>
+
+templates:
+
+  - id: sfr-01-entry-multiple
+    difficulty: easy
+    answer_type: numeric
+    questions:
+      - "What multiple did Westbrook pay for Project {{codename}}?"
+      - "At what entry multiple did Westbrook acquire {{codename}}?"
+      - "Project {{codename}}: what was the entry multiple?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        firm: westbrook
+        numbers.entry_multiple: {op: not_null}
+    gold:
+      path: numbers.entry_multiple
+      unit: multiple
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    gates:
+      grounding:
+        require_doc: true
+        require_gold_rendered: true
+    notes: >-
+      The canonical example. Entry multiples exist only on deals that actually
+      closed, so the candidate pool is small and every item is checkable
+      against a single document.
+
+  - id: sfr-02-adj-ebitda
+    difficulty: easy
+    answer_type: numeric
+    questions:
+      - "What was adjusted EBITDA at Project {{codename}}?"
+      - "How much adjusted EBITDA did {{codename}} have when we looked at it?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        tier: thick
+        numbers.adj_ebitda_m: {op: not_null}
+    gold:
+      path: numbers.adj_ebitda_m
+      unit: money_m
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    gates:
+      grounding:
+        require_doc: true
+        require_gold_rendered: true
+    notes: >-
+      Restricted to thick-tier deals, which carry enough documentation that the
+      figure appears in prose rather than only in a table.
+
+  - id: sfr-03-top-customer
+    difficulty: easy
+    answer_type: numeric
+    questions:
+      - "What share of revenue did Project {{codename}}'s largest customer represent?"
+      - "How concentrated was {{codename}}'s top customer?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        kill_code: C1
+        numbers.top_customer_pct: {op: not_null}
+    gold:
+      path: numbers.top_customer_pct
+      unit: percent
+    grading:
+      tolerance: {abs: 0.5, rel: 0.0}
+    gates:
+      grounding:
+        require_doc: true
+        require_gold_rendered: true
+    notes: >-
+      Tolerance is half a point because the corpus is allowed to restate
+      percentages as integers.
+
+  - id: sfr-04-kill-code
+    difficulty: medium
+    answer_type: categorical
+    questions:
+      - "On which screening criterion did Westbrook pass on Project {{codename}}?"
+      - "What killed {{codename}}?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        outcome: pass
+        kill_code: {op: not_null}
+    gold:
+      path: kill_code
+      unit: none
+      accept:
+        C1: ["c1", "criterion one", "criterion 1", "customer concentration", "concentration"]
+        C2: ["c2", "criterion two", "criterion 2", "margin", "ebitda margin"]
+        C3: ["c3", "criterion three", "criterion 3", "funded debt", "debt at close"]
+        C4: ["c4", "criterion four", "criterion 4", "us headquartered", "geography"]
+        PRICE: ["price", "valuation", "too expensive"]
+        SIZE: ["size", "too small", "below our size"]
+        OWNER_DEP: ["owner dependence", "owner dependency", "key man"]
+        CONTRACT_QUALITY: ["contract quality", "contracts"]
+        SECTOR: ["sector", "out of mandate", "wrong sector"]
+        QUALITY_OF_EARNINGS: ["quality of earnings", "qoe", "add-backs"]
+        SUCCESSION: ["succession", "succession risk", "no successor"]
+        CAPEX_INTENSITY: ["capex", "capex intensity", "capital intensity", "capital intensive"]
+        CUSTOMER_REFS: ["customer references", "customer refs", "reference calls", "references"]
+        REGULATORY: ["regulatory", "regulation", "regulatory risk", "licensing"]
+        MGMT_DEPTH: ["management depth", "bench", "thin management", "management bench"]
+        CYCLICALITY: ["cyclicality", "cyclical", "cyclical end markets"]
+        TIMING: ["timing", "process timing", "wrong time"]
+        INTEGRATION_RISK: ["integration risk", "integration", "integration complexity"]
+        OTHER: ["other"]
+    gates:
+      grounding:
+        require_doc: true
+        require_gold_rendered: true
+    notes: >-
+      Categorical rather than numeric. The `accept` map is what stops a correct
+      answer phrased as "customer concentration" from scoring as wrong when the
+      ledger stores "C1" -- and, just as importantly, stops "C2" from being
+      accepted when the gold is "C1".
+      The map now covers all 19 kill codes in the ledger. It covered 11, which
+      left 467 rows (31.9% of the pool) with no way to be answered correctly in
+      words: an arm saying "succession risk" for SUCCESSION scored wrong. The
+      grounding gate reads the same map, so the gap was also suppressing
+      capacity. Added: SUCCESSION, CAPEX_INTENSITY, CUSTOMER_REFS, REGULATORY,
+      MGMT_DEPTH, CYCLICALITY, TIMING, INTEGRATION_RISK.
+
+  # -------------------------------------------------------------------
+  # DELETED 2026-08-19: sfr-05-exit-multiple
+  # -------------------------------------------------------------------
+  # Five qualifying deals, and it added ZERO units to this family: all five
+  # already qualify under sfr-01 and sfr-02, and the unit here is one deal used
+  # once, so they were never extra items.
+  #
+  # Its selector was also byte-identical to cws-01's -- the same five exits,
+  # in two different families. A model shown five sfr-05 items has seen the
+  # entire evidence base for cws-01's answer.
+  #
+  # Measured separately: 0 of the 5 have a document in which the gold multiple
+  # is the only "N.Nx" figure, so the item was a retrieval-discrimination task
+  # dressed as single-fact recall. Deleted rather than repaired.
+
+  # -------------------------------------------------------------------
+  # ADDED 2026-08-19 -- gold-field diversity, not extra units
+  # -------------------------------------------------------------------
+  # The unit here is ONE DEAL used once, so these templates add no capacity:
+  # every deal they select already qualifies under sfr-02 or sfr-04. What they
+  # add is distinct GOLD FIELDS, and that is what the item-count policy needs.
+  #
+  # With four templates the policy's "no single gold field may exceed 20% of
+  # scored items" is arithmetically impossible -- four fields at 20% cover only
+  # 80% of the set. Rather than fall back to a looser cap, the honest fix is
+  # more kinds of question over the same deals. Seven fields make 20% reachable
+  # at any n up to 210.
+  #
+  # Each is a single unambiguous stored field with a documented surface form,
+  # and each carries the same grounding gate as the rest of the family: the
+  # gold must actually be stated in one of the deal's own documents.
+
+  - id: sfr-06-revenue-growth
+    difficulty: easy
+    answer_type: numeric
+    questions:
+      - "How fast was Project {{codename}} growing when we looked at it?"
+      - "What was revenue growth at {{codename}}?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        numbers.growth_pct: {op: not_null}
+    gold:
+      path: numbers.growth_pct
+      unit: percent
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    gates:
+      grounding:
+        require_doc: true
+        require_gold_rendered: true
+    notes: >-
+      Growth is stated in the teaser and the screening memo for almost every
+      v4 deal, which makes it the best-rendered numeric field in the ledger.
+
+  - id: sfr-07-customer-count
+    difficulty: easy
+    answer_type: numeric
+    questions:
+      - "How many customers did Project {{codename}} have?"
+      - "What was the customer count at {{codename}}?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        numbers.customer_count: {op: not_null}
+    gold:
+      path: numbers.customer_count
+      unit: count
+    grading:
+      tolerance: {abs: 0.0, rel: 0.0}
+    gates:
+      grounding:
+        require_doc: true
+        require_gold_rendered: true
+    notes: >-
+      A count, so the grader forces exact matching -- no tolerance argument can
+      rescue a near miss. Pairs with sfr-03: concentration and customer count
+      are the two halves of the same diligence question and a model that has
+      only absorbed one will show it.
+
+  - id: sfr-08-top3-concentration
+    difficulty: medium
+    answer_type: numeric
+    questions:
+      - "What share of revenue did Project {{codename}}'s top three customers represent?"
+      - "How concentrated were {{codename}}'s three largest accounts?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        numbers.top3_customer_pct: {op: not_null}
+    gold:
+      path: numbers.top3_customer_pct
+      unit: percent
+    grading:
+      tolerance: {abs: 0.5, rel: 0.0}
+    notes: >-
+      Deliberately adjacent to sfr-03's top-customer figure. Both appear in the
+      same paragraph of a screening memo, so an arm that retrieves the region
+      but not the right line lands on the wrong one -- which is a retrieval
+      failure worth separating from not finding the deal at all.
+    gates:
+      grounding:
+        require_doc: true
+        require_gold_rendered: true

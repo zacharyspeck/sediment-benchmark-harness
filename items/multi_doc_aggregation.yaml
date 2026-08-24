@@ -1,0 +1,170 @@
+# =====================================================================
+# FAMILY 2 -- multi_doc_aggregation
+#
+# The answer requires more documents than a single search returns. Gold is
+# computed from the ledger; the grader compares numerically within tolerance.
+#
+# SCOPE IS THE POINT. Each template should select roughly 5-30 rows: enough
+# that no single retrieval returns them all, few enough that the question is
+# still a fair one to ask. `validate-templates` prints the candidate count --
+# if a template selects 400 rows it belongs in corpus_wide_statistic, and if
+# it selects 3 it belongs in single_fact_recall.
+#
+# ---------------------------------------------------------------------
+# HOW TO ADD A TEMPLATE
+# ---------------------------------------------------------------------
+#   - id: mda-06
+#     difficulty: medium
+#     answer_type: numeric
+#     questions:
+#       - "Average X across {{sector}} deals in {{year}}?"
+#     slots:
+#       sector: {from: deals.sector, choose: [healthcare services]}
+#       year:   {from: deals.year,   choose: [2023]}
+#     selector:
+#       source: deals
+#       where:
+#         sector: "{{sector}}"          # slots substitute into the selector too
+#         year: "{{year}}"
+#     gold:
+#       aggregate: {op: mean, field: numbers.adj_ebitda_margin_pct, round: 1}
+#       unit: percent
+#
+# Aggregate ops: count count_distinct sum mean median min max stdev
+#                mode group_counts list pct_of value
+#
+# ALWAYS quote a slot used as a YAML value ("{{year}}"), or the parser reads
+# the braces as a flow mapping.
+# =====================================================================
+
+family: multi_doc_aggregation
+version: 1
+answer_format: |
+  ANSWER: <single value>
+  <then normal prose reasoning>
+
+templates:
+
+  - id: mda-01-mean-margin-sector-year
+    difficulty: medium
+    answer_type: numeric
+    questions:
+      - "What was the average EBITDA margin across {{sector}} deals we screened in {{year}}?"
+      - "Across everything we screened in {{sector}} during {{year}}, what was the mean adjusted EBITDA margin?"
+    slots:
+      sector: {from: deals.sector, choose: [healthcare services, business services, specialty manufacturing, consumer products & services, vertical SaaS]}
+      year: {from: deals.year, choose: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]}
+    selector:
+      source: deals
+      where:
+        sector: "{{sector}}"
+        year: "{{year}}"
+        stage: screen
+    gold:
+      aggregate: {op: mean, field: numbers.adj_ebitda_margin_pct, round: 1}
+      unit: percent
+    notes: >-
+      The archetype for this family. Both arms must find every screened deal in
+      one sector-year and average a field across them. Tolerance absorbs the
+      corpus's integer restatement of percentages; it does not absorb a missing
+      deal.
+
+  - id: mda-02-count-kills-sector-year
+    difficulty: medium
+    answer_type: numeric
+    questions:
+      - "How many {{sector}} deals did we pass on in {{year}}?"
+      - "In {{year}}, how many {{sector}} opportunities did we decline?"
+    slots:
+      sector: {from: deals.sector, choose: [healthcare services, business services, specialty manufacturing, consumer products & services, vertical SaaS]}
+      year: {from: deals.year, choose: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]}
+    selector:
+      source: deals
+      where:
+        sector: "{{sector}}"
+        year: "{{year}}"
+        outcome: pass
+    gold:
+      aggregate: {op: count}
+      unit: count
+    grading:
+      tolerance: {abs: 0.0, rel: 0.0}
+    notes: >-
+      A count, so tolerance is forced to exact by the grader regardless of the
+      family default. Awarding partial credit for a miscount would make this
+      family meaningless.
+
+  - id: mda-03-mean-revenue-by-kill
+    difficulty: medium
+    answer_type: numeric
+    questions:
+      - "What was the average revenue of the deals we killed on {{kill_code}} in {{year}}?"
+      - "Across our {{kill_code}} passes in {{year}}, what was mean revenue?"
+    slots:
+      kill_code: {from: deals.kill_code, choose: [CONTRACT_QUALITY, CUSTOMER_REFS, CYCLICALITY, MGMT_DEPTH, OWNER_DEP, QUALITY_OF_EARNINGS, REGULATORY, SECTOR, SUCCESSION, TIMING, PRICE, INTEGRATION_RISK, SIZE]}
+      year: {from: deals.year, choose: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]}
+    selector:
+      source: deals
+      where:
+        kill_code: "{{kill_code}}"
+        year: "{{year}}"
+    gold:
+      aggregate: {op: mean, field: numbers.revenue_m, round: 2}
+      unit: money_m
+    gates:
+      grounding:
+        require_doc: true
+    notes: >-
+      Crosses a categorical field with a year, which forces retrieval to
+      assemble the set rather than find it in one place.
+      The slot domains are wide on purpose: 143 combinations are declared and
+      most are dropped by the grounding gate, which is the correct division of
+      labour. The gate knows which populations are fully documented; the author
+      does not, and hand-picking four kill codes and three years produced six
+      usable units out of twelve. Declaring the full cross-product and letting
+      the gate decide produced considerably more without loosening anything --
+      the admitted sets still have to be complete, disjoint enough to pass the
+      overlap rule, and every contributing row still has to be retrievable.
+
+  - id: mda-04-median-concentration
+    difficulty: hard
+    answer_type: numeric
+    questions:
+      - "What was the median top-customer concentration among the deals we killed on concentration in {{year}}?"
+      - "For our {{year}} C1 passes, what was the median top-customer share of revenue?"
+    slots:
+      year: {from: deals.year, choose: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]}
+    selector:
+      source: deals
+      where:
+        kill_code: C1
+        year: "{{year}}"
+        numbers.top_customer_pct: {op: not_null}
+    gold:
+      aggregate: {op: median, field: numbers.top_customer_pct, round: 1}
+      unit: percent
+    notes: >-
+      A median rather than a mean, deliberately: it cannot be approximated from
+      a couple of remembered examples the way an average sometimes can.
+
+  - id: mda-05-sum-ebitda-thick-sector
+    difficulty: hard
+    answer_type: numeric
+    questions:
+      - "Adding up every {{sector}} opportunity we worked in {{year}}, what was the total adjusted EBITDA on the table?"
+      - "What was aggregate adjusted EBITDA across our {{sector}} pipeline in {{year}}?"
+    slots:
+      sector: {from: deals.sector, choose: [healthcare services, business services, specialty manufacturing, consumer products & services, vertical SaaS]}
+      year: {from: deals.year, choose: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]}
+    selector:
+      source: deals
+      where:
+        sector: "{{sector}}"
+        year: "{{year}}"
+    gold:
+      aggregate: {op: sum, field: numbers.adj_ebitda_m, round: 2}
+      unit: money_m
+    notes: >-
+      A sum is the least forgiving aggregation: every omitted or duplicated
+      document moves the answer, and unlike a mean the error does not shrink as
+      the set grows.

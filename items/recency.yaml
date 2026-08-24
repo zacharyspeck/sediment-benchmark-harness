@@ -1,0 +1,246 @@
+# =====================================================================
+# RECENCY -- a fact two documents disagree on, where a later one supersedes
+#            an earlier one.
+#
+# NOT ONE OF THE SIX FAMILIES. Recency items are tagged and reported on their
+# own line, never folded into single_fact_recall. They test a different thing:
+# not "can you find the fact" but "when the file says two things, do you know
+# which one is still true".
+#
+# WHY THIS FILE EXISTS AT ALL
+# ---------------------------
+# It did not exist before the corpus was rebuilt, and the honest answer for the
+# previous corpus was zero: every document about a deal carried that deal's one
+# ledger date, so no fact could be superseded by a later one. The rebuild spread
+# document dates, and portfolio companies now carry ~160 dated documents each
+# whose operating figures move quarter to quarter. That is a real time axis, so
+# a recency question is now askable. It is measured, not assumed -- see the
+# gate below.
+#
+# THE UNIT is (portfolio company, field). One item per company per figure.
+#
+# THE GOLD is the CURRENT value: `_derived.current.<field>`, the figure at the
+# company's latest recorded quarter, with `_derived.latest_quarter` naming which
+# quarter that is so the answer is attributable.
+#
+# THE GATE is `require_superseded`, and it is strict on purpose. A unit is
+# admitted only when:
+#   1. the figure is stated on at least two distinct document dates,
+#   2. at least two DIFFERENT values are stated -- a real disagreement,
+#   3. the latest document states exactly ONE value, so the current answer is
+#      not itself ambiguous,
+#   4. that latest value equals the ledger's current value.
+# Weaker conditions manufacture recency out of noise. Condition 3 is the one
+# that does the most work: a document stating two figures for the same fact
+# cannot be the source of a single gold answer.
+#
+# The `patterns` must capture exactly one numeric group and be anchored on the
+# LABEL, never on a bare number. A loose pattern collects unrelated figures and
+# invents a supersession.
+#
+# WHAT A WRONG ANSWER LOOKS LIKE
+# ------------------------------
+# The stale value. It is stated confidently, in a real document, by a named
+# author -- it was true once. That is exactly the failure a buyer cares about
+# and the reason this slice is worth its small n.
+# =====================================================================
+
+family: recency
+version: 1
+recency: true
+
+answer_format: |
+  ANSWER: <single value>
+  <then normal prose reasoning>
+
+templates:
+
+  - id: rec-01-current-retention
+    difficulty: hard
+    answer_type: numeric
+    recency: true
+    questions:
+      - "What is {{name}}'s gross retention rate now?"
+      - "Where does gross retention at {{name}} currently stand?"
+    slots:
+      name: name
+    selector:
+      source: portfolio_companies
+      where:
+        _derived.current.gross_retention_pct: {op: not_null}
+    gold:
+      path: _derived.current.gross_retention_pct
+      unit: percent
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    gates:
+      grounding:
+        codename_field: deal_codename
+        require_doc: true
+        require_gold_rendered: true
+        require_superseded:
+          patterns:
+            - '[Rr]etention (?:across the broader base )?(?:held at|is|was|of|at) ([\d.]+)%'
+            - 'gross (?:logo )?retention (?:of|is|at) ([\d.]+)%'
+    notes: >-
+      Retention is the figure the firm's own implicit rules turn on, so a stale
+      answer here is not a trivia miss -- it is the number a screening decision
+      would be made against.
+
+  - id: rec-02-current-margin
+    difficulty: hard
+    answer_type: numeric
+    recency: true
+    questions:
+      - "What margin is {{name}} running at now?"
+      - "What is {{name}}'s current EBITDA margin?"
+    slots:
+      name: name
+    selector:
+      source: portfolio_companies
+      where:
+        _derived.current.margin_pct: {op: not_null}
+    gold:
+      path: _derived.current.margin_pct
+      unit: percent
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    gates:
+      grounding:
+        codename_field: deal_codename
+        require_doc: true
+        require_gold_rendered: true
+        require_superseded:
+          patterns:
+            - 'margin of ([\d.]+)%'
+            - 'margin (?:is|was|at) ([\d.]+)%'
+    notes: >-
+      Margin moves in both directions across the hold, so the stale answer is
+      sometimes higher and sometimes lower than the truth. A model that has
+      simply memorised "the margin" without a date lands wrong either way.
+
+  - id: rec-03-current-top-customer
+    difficulty: hard
+    answer_type: numeric
+    recency: true
+    questions:
+      - "How concentrated is {{name}}'s largest customer today?"
+      - "What share of {{name}}'s revenue does its biggest account represent now?"
+    slots:
+      name: name
+    selector:
+      source: portfolio_companies
+      where:
+        _derived.current.top_customer_pct: {op: not_null}
+    gold:
+      path: _derived.current.top_customer_pct
+      unit: percent
+    grading:
+      tolerance: {abs: 0.5, rel: 0.0}
+    gates:
+      grounding:
+        codename_field: deal_codename
+        require_doc: true
+        require_gold_rendered: true
+        require_superseded:
+          patterns:
+            - 'largest account (?:now )?represents ([\d.]+)% of revenue'
+            - 'top customer (?:is|at|now) ([\d.]+)%'
+            - 'largest customer (?:is|at|now) ([\d.]+)% of revenue'
+    notes: >-
+      Concentration generally falls over a successful hold, so the stale answer
+      overstates risk. The board minutes that state the old figure are real
+      documents by named authors, which is what makes the item hard.
+
+  - id: rec-04-current-funded-debt
+    difficulty: hard
+    answer_type: numeric
+    recency: true
+    questions:
+      - "How much funded debt does {{name}} carry now?"
+      - "What is {{name}}'s current funded debt balance?"
+    slots:
+      name: name
+    selector:
+      source: portfolio_companies
+      where:
+        _derived.current.debt_m: {op: not_null}
+    gold:
+      path: _derived.current.debt_m
+      unit: money_m
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    gates:
+      grounding:
+        codename_field: deal_codename
+        require_doc: true
+        require_gold_rendered: true
+        require_superseded:
+          patterns:
+            - 'funded debt (?:held flat at|of|is|was|at) \$([\d.]+)M'
+    notes: >-
+      Debt amortises monotonically in this corpus, so the stale answer is
+      always too high. That makes the item a clean directional check as well as
+      a value check.
+
+  - id: rec-05-current-headcount
+    difficulty: medium
+    answer_type: numeric
+    recency: true
+    questions:
+      - "How many people does {{name}} employ now?"
+      - "What is {{name}}'s current headcount?"
+    slots:
+      name: name
+    selector:
+      source: portfolio_companies
+      where:
+        _derived.current.headcount: {op: not_null}
+    gold:
+      path: _derived.current.headcount
+      unit: count
+    grading:
+      tolerance: {abs: 0.0, rel: 0.0}
+    gates:
+      grounding:
+        codename_field: deal_codename
+        require_doc: true
+        require_gold_rendered: true
+        require_superseded:
+          patterns:
+            - '[Hh]eadcount (?:is|of|at) ([\d,]+)'
+    notes: >-
+      A count, so the grader forces exact matching. Headcount roughly doubles
+      over a hold in this corpus, so the stale figure is badly wrong rather
+      than nearly right -- no tolerance argument can rescue it.
+
+  - id: rec-06-current-revenue
+    difficulty: medium
+    answer_type: numeric
+    recency: true
+    questions:
+      - "What is {{name}} doing in revenue now?"
+      - "What is {{name}}'s current revenue?"
+    slots:
+      name: name
+    selector:
+      source: portfolio_companies
+      where:
+        _derived.current.revenue_m: {op: not_null}
+    gold:
+      path: _derived.current.revenue_m
+      unit: money_m
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    gates:
+      grounding:
+        codename_field: deal_codename
+        require_doc: true
+        require_gold_rendered: true
+        require_superseded:
+          patterns:
+            - '[Rr]evenue of \$([\d.]+)M'
+    notes: >-
+      The broadest of the six and the most likely to be stated in more than one
+      document on the latest date, which the gate rejects rather than guesses
+      at. Expect this template to lose units to condition 3.

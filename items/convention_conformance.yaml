@@ -1,0 +1,588 @@
+# =====================================================================
+# FAMILY 5 -- convention_conformance
+#
+# Draft a document. Grade it against a deterministic checklist built from the
+# ledger. Score = fraction of applicable checklist items passed.
+#
+# NO LLM JUDGE. NOT ANYWHERE, NOT LATER, NOT "JUST FOR THE VOICE CHECK".
+# Every check below is a string or regex operation. If a convention cannot be
+# written as one, it does not belong in this benchmark -- see the
+# `deliberately_not_checked` list at the bottom of each checklist, which
+# records what was left out and why. That list is a feature: it is the honest
+# statement of what this family does not measure.
+#
+# ---------------------------------------------------------------------
+# CHECK KINDS  (implemented in graders/convention_conformance.py)
+# ---------------------------------------------------------------------
+#   must_contain       every pattern (or one of `any_of`) must match
+#   must_not_contain   no pattern may match
+#   section_order      named sections appear, in the canonical order
+#   number_format      money/percent figures carry the house decimal count
+#   max_count          a pattern occurs at most N times
+#   min_count          a pattern occurs at least N times
+#   requires_nearby    if `trigger` appears, one of `require` must appear
+#                      within `window` characters
+#   first_line_matches the opener matches, within the first `lines` lines
+#
+# Any check may carry:
+#   applies_when: {pattern: '...'}   check is skipped -- and DROPPED FROM THE
+#                                    DENOMINATOR -- when the trigger is absent.
+#                                    Inapplicable checks that score as passes
+#                                    would reward a document for saying less.
+#   weight: 1.0                      recorded in the trace (scoring is
+#                                    currently unweighted; see notes)
+#   ledger_check: {path: ..., expect_values: [...]}
+#                                    asserts the checklist still agrees with
+#                                    the ledger. On drift the grade is flagged
+#                                    `checklist_ledger_drift` rather than
+#                                    silently grading against a stale rule.
+#
+# ---------------------------------------------------------------------
+# HOW TO ADD A CHECKLIST OR A CHECK
+# ---------------------------------------------------------------------
+# Add an entry under `checklists:` and point a template's
+# `gold.checklist_ref` at it. Regexes are written in SINGLE quotes so that
+# backslashes stay literal.
+#
+#   my_checklist_v1:
+#     version: 1
+#     source: which house rules this encodes
+#     checks:
+#       - id: cc-my-01
+#         kind: must_contain
+#         description: what a human would say this rule is
+#         patterns: ['\bsomething\b']
+#
+# Check the whole file loads and every template resolves:
+#     python -m harness.cli validate-templates
+# =====================================================================
+
+family: convention_conformance
+version: 1
+
+answer_format: |
+  ANSWER: <the document title or subject, one line>
+  <then the drafted document>
+
+# The ANSWER line is required by the house format even here, and the grader
+# strips it from the graded body before running any check, so the word
+# "ANSWER" can neither satisfy nor trip a pattern.
+
+# =====================================================================
+# CHECKLISTS
+# =====================================================================
+checklists:
+
+  # -------------------------------------------------------------------
+  halloran_exec_summary_v1:
+    version: 1
+    source: >-
+      House rules HR-01 through HR-07 and
+      canon.frozen_facts.halloran_exec_summary_section_order.
+    checks:
+      - id: cc-hl-financial-highlights-present
+        kind: must_contain
+        description: >-
+          The summary states at least one financial figure. Added when the
+          section-order check was cut: without it this checklist is entirely
+          negative, and a document that says nothing passes every remaining
+          check. Measured before it was added, the response 'No comment.'
+          scored 1.000 here.
+        patterns:
+          - '[$]\d'
+          - '\d+(?:[.]\d+)?%'
+
+      - id: cc-hl-no-projections
+        kind: must_not_contain
+        description: >-
+          HR-02. Never present management projections in an executive summary.
+          Actuals only.
+        patterns:
+          - '(?i)\bproject(?:ed|ion|ions)\b'
+          - '(?i)\bforecast(?:ed|s)?\b'
+          - '(?i)\bbudget(?:ed)?\b'
+          - '(?i)\bmanagement (?:case|plan|estimates?)\b'
+          - '(?i)\bexpected to (?:reach|grow|generate|exceed)\b'
+          - '(?i)\bpro ?forma\b'
+          - '(?i)\bnext (?:fiscal )?year(?:''s)? revenue\b'
+          - '(?i)\b20\d\dE\b'
+          - '(?i)\brun[- ]rate\b'
+
+      - id: cc-hl-no-stacked-superlatives
+        kind: max_count
+        description: >-
+          HR-04. No stacked superlatives. One strong claim beats three inflated
+          ones -- so one is tolerated and two is a failure.
+        max: 1
+        patterns:
+          - '(?i)\bbest[- ]in[- ]class\b'
+          - '(?i)\bworld[- ]class\b'
+          - '(?i)\bmarket[- ]leading\b'
+          - '(?i)\bindustry[- ]leading\b'
+          - '(?i)\bpremier\b'
+          - '(?i)\bunparalleled\b'
+          - '(?i)\bunmatched\b'
+          - '(?i)\bexceptional\b'
+          - '(?i)\boutstanding\b'
+          - '(?i)\bunrivalled\b'
+          - '(?i)\bunrivaled\b'
+          - '(?i)\bcutting[- ]edge\b'
+          - '(?i)\bstate[- ]of[- ]the[- ]art\b'
+
+      - id: cc-hl-money-one-decimal
+        kind: number_format
+        description: HR-05. Numbers in $M with one decimal.
+        target: money
+        decimals: 1
+
+      - id: cc-hl-margin-one-decimal
+        kind: number_format
+        description: HR-05. Margins to one decimal.
+        target: percent
+        decimals: 1
+
+      - id: cc-hl-risk-paired-with-mitigants
+        kind: requires_nearby
+        description: >-
+          HR-07. Name the client's biggest risk, paired with mitigants, before
+          a buyer finds it. Applies only if a risk is actually named.
+        trigger: '(?i)\b(?:risk|concentration|dependence|dependency|exposure|reliance)\b'
+        require:
+          - '(?i)\bmitigant'
+          - '(?i)\bmitigat'
+          - '(?i)\bhowever\b'
+          - '(?i)\boffset\b'
+          - '(?i)\brequalif'
+          - '(?i)\bre[- ]?certif'
+          - '(?i)\bcontract(?:ed|ual|ually)?\b'
+          - '(?i)\bswitching cost'
+        window: 500
+
+      - id: cc-hl-retention-verifiable
+        kind: requires_nearby
+        description: >-
+          HR-06. Retention and recurring-revenue figures appear only when
+          contractually verifiable -- so a retention number must sit near the
+          contractual basis for it.
+        trigger: '(?i)\b(?:retention|recurring|renewal rate)\b'
+        require:
+          - '(?i)\bcontract'
+          - '(?i)\bMSA\b'
+          - '(?i)\bmulti[- ]year\b'
+          - '(?i)\bautomatic renewal\b'
+          - '(?i)\bblanket purchase order'
+          - '(?i)\bservice agreement'
+          - '(?i)\bverifiab'
+        window: 400
+
+    deliberately_not_checked:
+      - check_id: cc-hl-section-order
+        was_kind: section_order
+        source_rule: HR-01
+        reason: "cut by design: not deterministic enough to defend."
+      - >-
+        HR-03 "Plain English. If a phrase would embarrass you read aloud to the
+        founder, cut it." This is a judgement, not a pattern. Approximating it
+        with a banned-word list would produce a number that looks rigorous and
+        is not. It is excluded, and this family therefore does not claim to
+        measure house voice -- only the mechanical conventions.
+
+  # -------------------------------------------------------------------
+  halloran_exec_summary_services_v1:
+    version: 1
+    source: HR-01..HR-08, with HR-08 (services businesses) added.
+    checks:
+      - id: cc-hls-relationship-material-present
+        kind: must_contain
+        description: >-
+          A services executive summary has to say something about the customer
+          relationships or the people delivering the work -- that is the whole
+          subject. Positive floor added when the section-order check was cut;
+          without it 'No comment.' scored 1.000.
+        patterns:
+          - '(?i)(?:relationship|tenure|retention|client|customer|staff|team)'
+      - id: cc-hls-relationships-lead-technology
+        kind: requires_nearby
+        description: >-
+          HR-08. For services businesses, lead with customer relationships and
+          tenure; the technology is a supporting paragraph. Checked as: where
+          technology is mentioned, a relationship/tenure signal appears before
+          it in the same neighbourhood.
+        trigger: '(?i)\b(?:technolog|platform|software|proprietary system)\w*'
+        require:
+          - '(?i)\btenure\b'
+          - '(?i)\brelationship'
+          - '(?i)\baverage of \d+ years\b'
+          - '(?i)\bretention\b'
+          - '(?i)\bcustomers? (?:have )?(?:been|purchas)'
+        window: 700
+
+      - id: cc-hls-no-projections
+        kind: must_not_contain
+        description: HR-02. Actuals only.
+        patterns:
+          - '(?i)\bproject(?:ed|ion|ions)\b'
+          - '(?i)\bforecast(?:ed|s)?\b'
+          - '(?i)\bexpected to (?:reach|grow|generate)\b'
+          - '(?i)\b20\d\dE\b'
+
+      - id: cc-hls-money-one-decimal
+        kind: number_format
+        description: HR-05. $M with one decimal.
+        target: money
+        decimals: 1
+
+      - id: cc-hls-no-stacked-superlatives
+        kind: max_count
+        description: HR-04. At most one strong claim.
+        max: 1
+        patterns:
+          - '(?i)\bbest[- ]in[- ]class\b'
+          - '(?i)\bworld[- ]class\b'
+          - '(?i)\bindustry[- ]leading\b'
+          - '(?i)\bpremier\b'
+          - '(?i)\bunparalleled\b'
+          - '(?i)\bexceptional\b'
+
+    deliberately_not_checked:
+      - check_id: cc-hls-section-order
+        was_kind: section_order
+        source_rule: HR-01
+        reason: "cut by design: not deterministic enough to defend."
+      - HR-03 plain English, as above.
+
+  # -------------------------------------------------------------------
+  westbrook_screening_memo_v1:
+    version: 1
+    source: >-
+      canon.frozen_documents.westbrook_investment_criteria_2024 process notes,
+      and canon.frozen_facts.westbrook_page_one_order.
+    checks:
+
+      - id: cc-wb-verdict-first-line
+        kind: first_line_matches
+        description: >-
+          "If the answer is pass, the memo says pass in the first line."
+          Checked over the first two lines to allow a project-name header.
+        lines: 2
+        any_of:
+          - '(?i)\bpass\b'
+          - '(?i)\badvance\b'
+          - '(?i)\bproceed\b'
+          - '(?i)\bdo not revisit\b'
+
+      - id: cc-wb-money-one-decimal
+        kind: number_format
+        description: House display convention -- $M to one decimal.
+        target: money
+        decimals: 1
+
+      - id: cc-wb-contracted-figure-or-disclaimer
+        kind: requires_nearby
+        description: >-
+          The Lantshaw lesson: every screening memo cites the contracted figure
+          or says the contracts have not been read yet. Applies only when a
+          recurring/retention claim is made.
+        trigger: '(?i)\b(?:recurring|retention|renewal)\b'
+        require:
+          - '(?i)\bcontracted\b'
+          - '(?i)\bunder contract\b'
+          - '(?i)\bMSA\b'
+          - '(?i)\bmulti[- ]year\b'
+          - '(?i)\bhave not (?:been )?read\b'
+          - '(?i)\bnot (?:yet )?(?:been )?(?:read|reviewed|verified)\b'
+          - '(?i)\bunverified\b'
+        window: 450
+
+      - id: cc-wb-no-forward-looking
+        kind: must_not_contain
+        description: >-
+          No projection, forecast, budget or target figure in a screening memo.
+        patterns:
+          - '(?i)\bproject(?:ed|ion|ions)\b'
+          - '(?i)\bforecast(?:ed|s)?\b'
+          - '(?i)\bbudget(?:ed)?\b'
+          - '(?i)\btarget of \$'
+          - '(?i)\b20\d\dE\b'
+
+    deliberately_not_checked:
+      - check_id: cc-wb-page-one-order
+        was_kind: section_order
+        source_rule: canon.westbrook_page_one_order
+        reason: "cut by design: not deterministic enough to defend."
+      - check_id: cc-wb-terse-no-hedging
+        was_kind: voice
+        source_rule: HR-03 house voice
+        reason: "cut by design: not deterministic enough to defend."
+      - >-
+        "Short declaratives, almost no adjectives." Sentence-length and
+        adjective-density heuristics were considered and rejected: they punish
+        a correct memo that happens to quote a long contract name, and they
+        reward padding removal that changes nothing about the analysis.
+
+  # -------------------------------------------------------------------
+  westbrook_screening_memo_pass_v1:
+    version: 1
+    source: Same as westbrook_screening_memo_v1, for a memo that must say PASS.
+    checks:
+      - id: cc-wbp-pass-in-first-line
+        kind: first_line_matches
+        description: >-
+          The verdict is "pass" and it must appear in the first line -- not in
+          a conclusion at the bottom.
+        lines: 2
+        any_of:
+          - '(?i)\bpass\b'
+          - '(?i)\bdecline\b'
+          - '(?i)\bdo not revisit\b'
+
+      - id: cc-wbp-names-the-criterion
+        kind: must_contain
+        description: A pass names the criterion it died on.
+        any_of:
+          - '(?i)\bcriterion (?:one|two|three|four|1|2|3|4)\b'
+          - '(?i)\bC[1-4]\b'
+          - '(?i)\bconcentration\b'
+          - '(?i)\bmargin\b'
+          - '(?i)\bfunded debt\b'
+          - '(?i)\bUS[- ]headquartered\b'
+
+      - id: cc-wbp-money-one-decimal
+        kind: number_format
+        description: $M to one decimal.
+        target: money
+        decimals: 1
+
+      - id: cc-wbp-no-forward-looking
+        kind: must_not_contain
+        description: No projections in a screening memo.
+        patterns:
+          - '(?i)\bproject(?:ed|ion|ions)\b'
+          - '(?i)\bforecast(?:ed|s)?\b'
+          - '(?i)\b20\d\dE\b'
+
+    deliberately_not_checked:
+      - check_id: cc-wbp-page-one-order
+        was_kind: section_order
+        source_rule: canon.westbrook_page_one_order
+        reason: "cut by design: not deterministic enough to defend."
+      - Voice and adjective density, as above.
+
+  # -------------------------------------------------------------------
+  halloran_retention_discipline_v1:
+    version: 1
+    source: HR-06, HR-02, HR-05 -- the retention-claim discipline specifically.
+    checks:
+      - id: cc-hlr-claim-disposed
+        kind: must_contain
+        description: >-
+          The paragraph must actually address retention or recurring revenue,
+          the one thing it was asked to draft. This checklist already scored
+          1.000 on 'No comment.' BEFORE any deletion -- three of its five
+          checks are conditional and evaporate on a figure-free document, and
+          the two that remain are both negative. Saying nothing is not
+          conformance.
+        patterns:
+          - '(?i)(?:retention|recurring|renewal|churn|contract)'
+      - id: cc-hlr-retention-needs-contract
+        kind: requires_nearby
+        description: >-
+          A retention or recurring-revenue figure must sit next to the
+          contractual basis that makes it verifiable.
+        trigger: '(?i)\b(?:retention|recurring|renewal rate|churn)\b'
+        require:
+          - '(?i)\bcontract'
+          - '(?i)\bMSA\b'
+          - '(?i)\bmulti[- ]year\b'
+          - '(?i)\bautomatic renewal\b'
+          - '(?i)\bblanket purchase order'
+          - '(?i)\bservice agreement'
+        window: 400
+
+      - id: cc-hlr-no-unqualified-recurring-claim
+        kind: must_not_contain
+        description: >-
+          The Lantshaw failure in one pattern: a bare "N% recurring revenue"
+          claim with no contractual qualifier attached to the phrase itself.
+        patterns:
+          - '(?i)\b\d{1,3}(?:\.\d+)?% recurring revenue\b(?![^.]{0,80}\bcontract)'
+
+      - id: cc-hlr-percent-one-decimal
+        kind: number_format
+        description: HR-05. Margins and rates to one decimal.
+        target: percent
+        decimals: 1
+
+      - id: cc-hlr-money-one-decimal
+        kind: number_format
+        description: HR-05. $M to one decimal.
+        target: money
+        decimals: 1
+
+      - id: cc-hlr-no-projections
+        kind: must_not_contain
+        description: HR-02. Actuals only.
+        patterns:
+          - '(?i)\bproject(?:ed|ion|ions)\b'
+          - '(?i)\bforecast(?:ed|s)?\b'
+          - '(?i)\bexpected to (?:reach|grow)\b'
+
+    deliberately_not_checked:
+      - Plain English (HR-03).
+
+# =====================================================================
+# TEMPLATES
+# =====================================================================
+templates:
+
+  - id: ccf-01-halloran-exec-summary
+    difficulty: medium
+    answer_type: document
+    questions:
+      - "Draft the executive summary section of the CIM for Project {{codename}}, a {{sector}} business with ${{revenue_m}}M of revenue and ${{adj_ebitda_m}}M of adjusted EBITDA. Follow house drafting standards."
+      - "Write the CIM executive summary for {{codename}} ({{sector}}, ${{revenue_m}}M revenue, ${{adj_ebitda_m}}M adjusted EBITDA), to Halloran drafting standards."
+    slots:
+      codename: codename
+      sector: sector
+      revenue_m: numbers.revenue_m
+      adj_ebitda_m: numbers.adj_ebitda_m
+    selector:
+      source: deals
+      where:
+        firm: halloran
+        tier: thick
+    gold:
+      checklist_ref: halloran_exec_summary_v1
+    gates:
+      grounding:
+        # The drafting target must be a real, documented deal: the model is
+        # asked to draft ABOUT it, so its facts have to be retrievable. This
+        # does not require a document of the type being drafted -- that would
+        # turn a drafting task into a copying task.
+        require_doc: true
+    notes: >-
+      The core conformance item. Note the question supplies the figures: this
+      family measures whether the house conventions were followed, not whether
+      the numbers were recalled. It also means those figures are allowlisted
+      for the fabrication scorer, so quoting them back is not an invention.
+
+  - id: ccf-02-westbrook-screening-memo
+    difficulty: medium
+    answer_type: document
+    questions:
+      - "Draft a screening memo for Project {{codename}}: {{sector}}, ${{revenue_m}}M revenue, ${{adj_ebitda_m}}M adjusted EBITDA, top customer at {{top_customer_pct}}% of revenue."
+      - "Write the screening memo for {{codename}} ({{sector}}; ${{revenue_m}}M revenue; ${{adj_ebitda_m}}M adjusted EBITDA; largest customer {{top_customer_pct}}% of revenue)."
+    slots:
+      codename: codename
+      sector: sector
+      revenue_m: numbers.revenue_m
+      adj_ebitda_m: numbers.adj_ebitda_m
+      top_customer_pct: numbers.top_customer_pct
+    selector:
+      source: deals
+      where:
+        firm: westbrook
+        stage: screen
+        numbers.top_customer_pct: {op: not_null}
+    gold:
+      checklist_ref: westbrook_screening_memo_v1
+    gates:
+      grounding:
+        # The drafting target must be a real, documented deal: the model is
+        # asked to draft ABOUT it, so its facts have to be retrievable. This
+        # does not require a document of the type being drafted -- that would
+        # turn a drafting task into a copying task.
+        require_doc: true
+    notes: >-
+      Tests the page-one order, which is the most distinctive and most
+      mechanically checkable Westbrook convention.
+
+  - id: ccf-03-halloran-services-exec-summary
+    difficulty: hard
+    answer_type: document
+    questions:
+      - "Draft the CIM executive summary for Project {{codename}}, a {{sector}} business with ${{revenue_m}}M of revenue. It is a services business with a software component."
+    slots:
+      codename: codename
+      sector: sector
+      revenue_m: numbers.revenue_m
+    selector:
+      source: deals
+      where:
+        firm: halloran
+        sector: {op: regex, value: '(?i)services'}
+    gold:
+      checklist_ref: halloran_exec_summary_services_v1
+    gates:
+      grounding:
+        # The drafting target must be a real, documented deal: the model is
+        # asked to draft ABOUT it, so its facts have to be retrievable. This
+        # does not require a document of the type being drafted -- that would
+        # turn a drafting task into a copying task.
+        require_doc: true
+    notes: >-
+      Targets HR-08, added after Lattice: for services businesses lead with
+      relationships and tenure, technology is a supporting paragraph. The
+      prompt deliberately mentions software to invite the mistake.
+
+  - id: ccf-04-westbrook-pass-memo
+    difficulty: medium
+    answer_type: document
+    questions:
+      - "We are passing on Project {{codename}} ({{sector}}, ${{revenue_m}}M revenue, top customer {{top_customer_pct}}% of revenue). Draft the screening memo."
+    slots:
+      codename: codename
+      sector: sector
+      revenue_m: numbers.revenue_m
+      top_customer_pct: numbers.top_customer_pct
+    selector:
+      source: deals
+      where:
+        firm: westbrook
+        outcome: pass
+        kill_code: C1
+        numbers.top_customer_pct: {op: not_null}
+    gold:
+      checklist_ref: westbrook_screening_memo_pass_v1
+    gates:
+      grounding:
+        # The drafting target must be a real, documented deal: the model is
+        # asked to draft ABOUT it, so its facts have to be retrievable. This
+        # does not require a document of the type being drafted -- that would
+        # turn a drafting task into a copying task.
+        require_doc: true
+    notes: >-
+      The verdict-in-line-one convention is the single easiest house rule to
+      violate and the easiest to check, which makes it a good calibration item
+      for the family.
+
+  - id: ccf-05-halloran-retention-discipline
+    difficulty: hard
+    answer_type: document
+    questions:
+      - "Draft the customer stickiness paragraph of the CIM executive summary for Project {{codename}}. Management says {{recurring_pct}}% of revenue is recurring."
+    slots:
+      codename: codename
+      recurring_pct: numbers.recurring_pct
+    selector:
+      source: deals
+      where:
+        firm: halloran
+        numbers.recurring_pct: {op: not_null}
+    gold:
+      checklist_ref: halloran_retention_discipline_v1
+    gates:
+      grounding:
+        # The drafting target must be a real, documented deal: the model is
+        # asked to draft ABOUT it, so its facts have to be retrievable. This
+        # does not require a document of the type being drafted -- that would
+        # turn a drafting task into a copying task.
+        require_doc: true
+    notes: >-
+      Deliberately hands the model an unverified management claim. The house
+      rule (HR-06, reinforced by the Lantshaw post-mortem) is that the figure
+      appears only when contractually verifiable. Repeating it unqualified is
+      the failure this template is looking for.
+      If your ledger has no `numbers.recurring_pct` on Halloran rows, this
+      template will validate EMPTY -- switch the slot to a literal or widen
+      the selector rather than deleting the template.

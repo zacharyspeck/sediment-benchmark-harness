@@ -1,0 +1,474 @@
+# =====================================================================
+# EDGE-CASE FIXTURES -- adversarial regression cases
+#
+# Separate from fixtures/fixture_items.yaml, which is the canonical 30-item
+# benchmark fixture set and stays at 30. This file is a regression suite: every
+# case here is something that either broke a grader, nearly broke one, or is a
+# way a real model output could defeat a naive implementation.
+#
+# One arm (`edge`), because these test grader behaviour rather than a run.
+#
+# WHEN YOU FIND A NEW FAILURE MODE, ADD IT HERE.
+# Shape is identical to fixture_items.yaml:
+#
+#   - item_id: edge-xx-short-name
+#     family: <one of the six>
+#     question: "..."
+#     answer_type: numeric | categorical | document
+#     gold: {value: ..., unit: ...}
+#     responses: {edge: "..."}
+#     expect:  {edge: {score: 1.0, verdict: correct, ...}}
+#
+# Expect keys: score, verdict, extraction_uncertain, flags_include, fabricated,
+# fabricated_surfaces_include, outcome, perfect_conformance, score_min,
+# score_max.
+# =====================================================================
+
+version: 1
+ledger: fixtures/mini_ledger.json
+
+items:
+
+# ---------------------------------------------------------------------
+# NEGATION -- an arm answering the exact opposite must not score
+# ---------------------------------------------------------------------
+
+  - item_id: edge-01-negated-verdict-advance
+    family: implicit_rule_application
+    question: "Does Westbrook advance this or pass?"
+    answer_type: categorical
+    gold: {value: advance, unit: none}
+    meta: {written_criteria_verdict: advance, discriminates: false, driving_rule_ids: []}
+    responses:
+      edge: |
+        ANSWER: we would not advance this
+
+        The concentration is past where this file goes.
+    expect:
+      edge:
+        score: 0.0
+        verdict: incorrect
+    notes: >-
+      The bug this file was created for. Naive whole-word containment scored
+      this as `advance`, because "advance" is a substring of "not advance" --
+      an arm answering the exact opposite of gold scored 1.0. Longest-match-
+      wins across all labels now picks the `pass` form "would not advance".
+
+  - item_id: edge-02-negated-bare-form
+    family: implicit_rule_application
+    question: "Does Westbrook advance this or pass?"
+    answer_type: categorical
+    gold: {value: pass, unit: none}
+    meta: {written_criteria_verdict: pass, discriminates: false}
+    responses:
+      edge: |
+        ANSWER: this is not a pass
+
+        Everything clears.
+    expect:
+      edge:
+        score: 0.0
+        verdict: incorrect
+        flags_include: [negated_match]
+    notes: >-
+      No accept list can enumerate every negation, so a bare form under a
+      negator is dropped outright rather than matched.
+
+  - item_id: edge-03-negation-then-correct-verdict
+    family: implicit_rule_application
+    question: "Does Westbrook advance this or pass?"
+    answer_type: categorical
+    gold: {value: advance, unit: none}
+    meta: {written_criteria_verdict: advance, discriminates: false}
+    responses:
+      edge: |
+        ANSWER: this is not a pass, we advance
+
+        Retention is 95.2% and the top customer is 9%.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+    notes: A negation elsewhere in the line must not suppress the real verdict.
+
+  - item_id: edge-04-rather-than
+    family: implicit_rule_application
+    question: "Does Westbrook advance this or pass?"
+    answer_type: categorical
+    gold: {value: pass, unit: none}
+    meta: {written_criteria_verdict: advance, discriminates: true, driving_rule_ids: [RULE-F1]}
+    responses:
+      edge: |
+        ANSWER: we would pass rather than advance
+
+        Top three at 44% is past the internal line.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+    notes: '"X rather than Y" asserts X and rejects Y.'
+
+# ---------------------------------------------------------------------
+# EXTRACTOR STRESS
+# ---------------------------------------------------------------------
+
+  - item_id: edge-05-answer-line-at-the-end
+    family: single_fact_recall
+    question: "What multiple did Westbrook pay for Project Kilnmouth?"
+    answer_type: numeric
+    gold: {value: 6.4, unit: multiple}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: |
+        Kilnmouth was Fund I's first platform, acquired in May 2017 on $4.8M of
+        adjusted EBITDA against $22.6M of revenue. Route density was the thesis
+        and the exit in 2023 bore it out.
+
+        ANSWER: 6.4x
+    expect:
+      edge: {score: 1.0, verdict: correct, extraction_uncertain: false}
+    notes: >-
+      The format asks for the ANSWER line first, but an arm that puts it last is
+      still unambiguous. The extractor takes the line wherever it appears; only
+      a MISSING line triggers the fallback.
+
+  - item_id: edge-06-two-answer-lines
+    family: single_fact_recall
+    question: "What multiple did Westbrook pay for Project Kilnmouth?"
+    answer_type: numeric
+    gold: {value: 6.4, unit: multiple}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: 6.4x
+
+        On reflection I should restate that.
+
+        ANSWER: 7.1x
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+        flags_include: [multiple_answer_lines]
+    notes: >-
+      First line wins, and the item is flagged. Taking the LAST line would let a
+      model hedge its way to a better score; taking the first and flagging it
+      keeps the rule simple and the ambiguity visible in the trace.
+
+  - item_id: edge-07-answer-in-a-markdown-table
+    family: single_fact_recall
+    question: "What was adjusted EBITDA at Project Foxgworth?"
+    answer_type: numeric
+    gold: {value: 7.1, unit: money_m}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: |
+        | field | value |
+        |---|---|
+        | ANSWER: | $7.1M |
+
+        Foxgworth closed in June 2020.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+    notes: >-
+      A model that formats everything as a table still produces a parseable
+      ANSWER line, because the pattern tolerates leading pipes and markup.
+
+  - item_id: edge-08-unicode-multiplication-sign
+    family: single_fact_recall
+    question: "What multiple did Westbrook pay for Project Stalcrest?"
+    answer_type: numeric
+    gold: {value: 7.0, unit: multiple}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: 7.0×
+
+        Stalcrest closed in October 2018.
+    expect:
+      edge: {score: 1.0, verdict: correct}
+    notes: The multiplication sign, not the letter x. Both parse.
+
+  - item_id: edge-09-verbose-answer-line
+    family: single_fact_recall
+    question: "What multiple did Westbrook pay for Project Juniper?"
+    answer_type: numeric
+    gold: {value: 6.6, unit: multiple}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: approximately 6.6x, though the file rounds it differently in places
+
+        Juniper was bought in March 2019.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+        flags_include: [answer_line_verbose]
+    notes: >-
+      Padding on the ANSWER line is tolerated and flagged. Rejecting it would
+      punish a formatting habit rather than a wrong answer.
+
+  - item_id: edge-10-thousands-separator
+    family: corpus_wide_statistic
+    question: "How many opportunities has Westbrook screened and passed on in total?"
+    answer_type: numeric
+    gold: {value: 8, unit: count}
+    grading: {tolerance: {abs: 0.0, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: 8
+
+        Tindmarch, Craygarth, Marlin, Quarborne, Pelican, Thicket, Brindle, Cobathwaite.
+    expect:
+      edge: {score: 1.0, verdict: correct}
+
+  - item_id: edge-11-percent-spelled-out
+    family: single_fact_recall
+    question: "What share of revenue did Project Craygarth's largest customer represent?"
+    answer_type: numeric
+    gold: {value: 82, unit: percent}
+    grading: {tolerance: {abs: 0.5, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: 82 percent
+
+        A single school-district co-op.
+    expect:
+      edge: {score: 1.0, verdict: correct}
+
+  - item_id: edge-12-tolerance-boundary-inside
+    family: single_fact_recall
+    question: "What was adjusted EBITDA at Project Foxgworth?"
+    answer_type: numeric
+    gold: {value: 7.1, unit: money_m}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: "ANSWER: $7.15M"
+    expect:
+      edge: {score: 1.0, verdict: correct}
+    notes: Exactly on the tolerance boundary. The comparison is inclusive.
+
+  - item_id: edge-13-tolerance-boundary-outside
+    family: single_fact_recall
+    question: "What was adjusted EBITDA at Project Foxgworth?"
+    answer_type: numeric
+    gold: {value: 7.1, unit: money_m}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: "ANSWER: $7.16M"
+    expect:
+      edge: {score: 0.0, verdict: incorrect}
+    notes: One hundredth outside. Fails. The boundary is where it is stated to be.
+
+  - item_id: edge-14-whole-dollars-not-millions
+    family: multi_doc_aggregation
+    question: "Adding up the healthcare services opportunities screened in 2023, what was total adjusted EBITDA?"
+    answer_type: numeric
+    gold: {value: 17.5, unit: money_m}
+    responses:
+      edge: |
+        ANSWER: $17,500,000
+
+        Marlin $3.8M, Quarborne $7.6M, Pelican $6.1M.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+        flags_include: [scale_normalized]
+    notes: >-
+      Whole dollars against a $M gold. Rescaled and flagged, never silently.
+
+  - item_id: edge-15-answer-line-with-no-number
+    family: corpus_wide_statistic
+    question: "What is the median hold period across all of Westbrook's exits?"
+    answer_type: numeric
+    gold: {value: 5.45, unit: years}
+    grading: {tolerance: {abs: 0.1, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: it varies by deal
+
+        Some were held longer than others.
+    expect:
+      edge:
+        score: 0.0
+        verdict: incorrect
+        flags_include: [no_numeric_answer]
+    notes: >-
+      A present but useless ANSWER line. Not `extraction_uncertain` -- the line
+      was found and read; it simply contained no answer. Conflating the two
+      would make the extraction-health number meaningless.
+
+# ---------------------------------------------------------------------
+# FABRICATION
+# ---------------------------------------------------------------------
+
+  - item_id: edge-16-real-and-invented-person-together
+    family: single_fact_recall
+    question: "What multiple did Westbrook pay for Project Kilnmouth?"
+    answer_type: numeric
+    gold: {value: 6.4, unit: multiple}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: 6.4x
+
+        Ellis Wray signed the memo and Gregory Whitvale ran the diligence.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+        fabricated: true
+        fabricated_surfaces_include: [Gregory Whitvale]
+    notes: >-
+      A real partner and an invented one in the same sentence. Only the invented
+      one is flagged; a scorer that flags both is useless, and one that flags
+      neither is worse.
+
+  - item_id: edge-17-invented-firm
+    family: single_fact_recall
+    question: "What multiple did Westbrook exit Project Juniper at?"
+    answer_type: numeric
+    gold: {value: 8.1, unit: multiple}
+    grading: {tolerance: {abs: 0.05, rel: 0.0}}
+    responses:
+      edge: |
+        ANSWER: 8.1x
+
+        The buyer was Camberwell Industrial Holdings, a strategic.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+        fabricated: true
+        fabricated_surfaces_include: [Camberwell Industrial Holdings]
+
+  - item_id: edge-18-question-entities-are-quotation
+    family: implicit_rule_application
+    question: "Project Harrowgate has $22.0M of revenue and a top customer at 41% of revenue. Does Westbrook advance or pass?"
+    answer_type: categorical
+    gold: {value: pass, unit: none}
+    meta: {written_criteria_verdict: pass, discriminates: false}
+    responses:
+      edge: |
+        ANSWER: pass
+
+        Project Harrowgate's top customer at 41% is straight through criterion
+        one, and $22.0M of revenue does not change that.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+        fabricated: false
+    notes: >-
+      Echoing back a target the question supplied is quotation, not invention.
+      Without per-item allowlisting every family-4 response would flag.
+
+# ---------------------------------------------------------------------
+# ABSTENTION
+# ---------------------------------------------------------------------
+
+  - item_id: edge-19-abstention-mentioning-a-real-deal
+    family: absence_and_abstention
+    question: "What was Westbrook's investment thesis for Project Thicket?"
+    answer_type: categorical
+    gold:
+      value: no_thesis
+      accept: {no_thesis: ["no thesis", "passed at screening", "none"]}
+    meta: {deal_codename: Thicket, kill_code: C2}
+    responses:
+      edge: |
+        ANSWER: no thesis
+
+        Thicket was passed at screening on margin. For contrast, Kilnmouth is the
+        deal that did get a thesis -- but nothing of the kind exists here.
+    expect:
+      edge:
+        score: 1.0
+        verdict: correct
+        outcome: correct_abstention
+        fabricated: false
+    notes: >-
+      Naming a real deal while correctly abstaining is fine. Only an invented
+      one, or an invented thesis for THIS deal, is a failure.
+
+  - item_id: edge-20-hedged-invention-still-counts
+    family: absence_and_abstention
+    question: "What was Westbrook's investment thesis for Project Brindle?"
+    answer_type: categorical
+    gold:
+      value: no_thesis
+      accept: {no_thesis: ["no thesis", "passed at screening", "none"]}
+    meta: {deal_codename: Brindle, kill_code: SIZE}
+    responses:
+      edge: |
+        ANSWER: no thesis was formally recorded
+
+        That said, our thesis was probably built around consolidating a
+        fragmented supplier base, and we were attracted to the margin profile.
+    expect:
+      edge:
+        score: 0.0
+        outcome: invented_thesis
+        flags_include: [invented_thesis]
+    notes: >-
+      The verdict line is right and the prose invents anyway. Hedging words
+      ("probably") do not launder it -- the reader still comes away with a
+      thesis that no document supports. Verdict AND clean prose, or no score.
+
+# ---------------------------------------------------------------------
+# CONFORMANCE
+# ---------------------------------------------------------------------
+
+  - item_id: edge-21-document-with-no-answer-line
+    family: convention_conformance
+    question: "Draft the customer stickiness paragraph for Project Cedacombe."
+    answer_type: document
+    gold:
+      checks:
+        - id: edge-cc-retention
+          kind: requires_nearby
+          description: A retention figure must sit next to its contractual basis.
+          trigger: '(?i)\bretention\b'
+          require: ['(?i)\bcontract', '(?i)\bservice agreement', '(?i)\bmulti[- ]year\b']
+          window: 300
+        - id: edge-cc-money
+          kind: number_format
+          description: Money in $M to one decimal.
+          target: money
+          decimals: 1
+    responses:
+      edge: |
+        Cedacombe serves approximately 2,900 customer locations under multi-year
+        service agreements with automatic renewal, and gross revenue retention
+        has exceeded 96.0% in each of the last three fiscal years. Revenue for
+        the year was $41.9M.
+    expect:
+      edge:
+        perfect_conformance: true
+        flags_include: [missing_answer_line]
+    notes: >-
+      The drafted document IS the answer, so a missing ANSWER line must not stop
+      the checklist from running. It is still flagged, because the format
+      instruction was not followed.
+
+  - item_id: edge-22-empty-document
+    family: convention_conformance
+    question: "Draft the customer stickiness paragraph for Project Cedacombe."
+    answer_type: document
+    gold:
+      checks:
+        - id: edge-cc-must-say-something
+          kind: must_contain
+          description: The document must exist.
+          patterns: ['\w']
+    responses:
+      edge: ""
+    expect:
+      edge:
+        score: 0.0
+        flags_include: [empty_response]
+    notes: An empty draft fails every applicable check rather than erroring.

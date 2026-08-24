@@ -1,0 +1,52 @@
+# WHICH LEDGER THE HARNESS READS
+#
+# The corpus repo is READ-ONLY to this harness. Nothing here ever writes to it,
+# locks it, or runs a git command inside it.
+#
+# Two schemas exist at once while the corpus build is in flight:
+#   v3  a single ledger-v3.json + sibling holdout-targets.json (key `targets`)
+#   v4  a sharded ledger-v4/ directory (key `holdout_targets`)
+# harness/ledger.py normalizes both, so this file is the only place that needs
+# to know which one is current.
+#
+# `fallback_order` is tried in sequence when `active` cannot be read -- which
+# happens legitimately if the corpus build is mid-write.
+
+active: corpus_v4
+
+fallback_order:
+  - corpus_v3
+  - fixture_mini
+
+# WHERE THE DOCUMENTS ARE
+#
+# The ledger is the GOLD source. The corpus below is the EVIDENCE source --
+# what an arm can actually retrieve. Capacity cannot be measured honestly
+# without it: a question whose answer sits in no document is not answerable,
+# and a question the documents contradict has the wrong gold. Both gates need
+# to read this tree.
+#
+# Read-only, like everything else in that repo. harness/paths.py refuses any
+# write that resolves underneath it.
+corpus_dir: ../sediment-corpus/corpus-v4
+
+sources:
+
+  corpus_v4:
+    path: ../sediment-corpus/ledger-v4
+    schema: v4
+    notes: Sharded ledger. Read-only. Another agent owns this directory.
+
+  corpus_v3:
+    path: ../sediment-corpus/ledger-v3.json
+    schema: v3
+    holdout_path: ../sediment-corpus/holdout-targets.json
+    notes: Previous single-file ledger, kept as a fallback.
+
+  fixture_mini:
+    path: fixtures/mini_ledger.json
+    schema: normalized
+    notes: >-
+      Self-contained miniature ledger committed to THIS repo. The fixture suite
+      runs against it so the tests are hermetic and deterministic even while the
+      corpus is being rebuilt.

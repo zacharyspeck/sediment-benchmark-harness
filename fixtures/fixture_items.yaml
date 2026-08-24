@@ -1,0 +1,1177 @@
+# =====================================================================
+# FIXTURES -- 30 hand-written items with known answers
+#
+# WHAT THIS FILE IS FOR
+# ---------------------
+# Every grader must be provable. Each item below carries a question, a gold
+# answer, and TWO hand-written responses -- one per fixture arm -- plus an
+# `expect` block stating exactly what the grader must return for each. The
+# test suite (tests/test_fixtures.py) asserts that, so a grader that silently
+# changes behaviour fails a test rather than quietly changing a benchmark
+# result.
+#
+# It is also a two-arm end-to-end run: `fixture_strong` is a mostly-correct
+# system, `fixture_weak` a worse one. Running them produces a real report with
+# real confidence intervals, which is what makes the sample report meaningful
+# rather than decorative.
+#
+# GOLD VALUES ARE COMPUTED, NOT GUESSED
+# -------------------------------------
+# Every numeric gold below was computed from fixtures/mini_ledger.json through
+# the harness's own query layer, not worked out by hand. tests/test_fixtures.py
+# recomputes them and fails if the ledger and the fixtures drift apart.
+#
+# FAILURE MODES COVERED (the point of the exercise)
+# -------------------------------------------------
+#   correct                 many
+#   wrong                   many
+#   malformed / no ANSWER   sfr-fix-02.weak, mda-fix-03.weak (empty label),
+#                           cws-fix-02.weak, ira-fix-05.weak
+#   fabricated entities     sfr-fix-04.weak, mda-fix-05.weak, aaa-fix-05.weak
+#   correct but verbose     sfr-fix-02.strong, cws-fix-01.strong, ira-fix-01.strong
+#   refusals                sfr-fix-05.weak, ira-fix-04.weak, aaa-fix-04.weak
+#   unit slips (still right) mda-fix-04.strong (fraction), cws-fix-01.strong (months)
+#
+# NOTE ON sfr-fix-04.weak: it is CORRECT and it FABRICATES. That combination is
+# deliberate -- it proves the fabrication scorer is independent of correctness,
+# which is the whole reason it is a separate number.
+# =====================================================================
+
+version: 1
+ledger: fixtures/mini_ledger.json
+
+items:
+
+# =====================================================================
+# FAMILY 1 -- single_fact_recall
+# =====================================================================
+
+  - item_id: sfr-fix-01
+    family: single_fact_recall
+    question: "What multiple did Westbrook pay for Project Kilnmouth?"
+    answer_type: numeric
+    gold:
+      value: 6.4
+      unit: multiple
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    meta: {difficulty: easy, source_deal: Kilnmouth, fixture_case: "correct / wrong"}
+    responses:
+      fixture_strong: |
+        ANSWER: 6.4x
+
+        Kilnmouth was acquired in May 2017 at 6.4x adjusted EBITDA of $4.8M, an
+        enterprise value of $30.7M. It became Fund I's proof case.
+      fixture_weak: |
+        ANSWER: 7.2x
+
+        Westbrook paid around 7.2x for Kilnmouth.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect, fabricated: false}
+
+  - item_id: sfr-fix-02
+    family: single_fact_recall
+    question: "What share of revenue did Project Craygarth's largest customer represent?"
+    answer_type: numeric
+    gold:
+      value: 82
+      unit: percent
+    grading:
+      tolerance: {abs: 0.5, rel: 0.0}
+    meta: {difficulty: easy, source_deal: Craygarth, fixture_case: "verbose-correct / malformed"}
+    responses:
+      fixture_strong: |
+        ANSWER: 82%
+
+        Project Craygarth was an education communications provider that Westbrook
+        screened in March 2022. The business itself looked good on the surface:
+        $28.0M of revenue, $6.2M of adjusted EBITDA, a 22.1% margin, founder
+        owned, no debt, and growth above 30% in each of the prior three years.
+
+        The problem was the customer base. A single school-district purchasing
+        co-op represented 82% of revenue under an annually renewed agreement.
+        Management presented that as a fifteen-year partnership. Westbrook read
+        it as one procurement decision away from a broken company, and passed
+        pre-LOI on criterion one.
+      fixture_weak: |
+        Craygarth's largest customer was a school-district purchasing co-op, and
+        it accounted for 82% of revenue. That was the reason for the pass.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak:
+        score: 1.0
+        verdict: correct
+        extraction_uncertain: true
+        flags_include: [missing_answer_line, extraction_uncertain]
+
+  - item_id: sfr-fix-03
+    family: single_fact_recall
+    question: "On which screening criterion did Westbrook pass on Project Tindmarch?"
+    answer_type: categorical
+    gold:
+      value: C1
+      unit: none
+      accept:
+        C1: ["c1", "criterion one", "criterion 1", "customer concentration", "concentration"]
+        C2: ["c2", "criterion two", "margin", "ebitda margin"]
+        C3: ["c3", "criterion three", "funded debt"]
+        C4: ["c4", "criterion four", "us headquartered"]
+    meta: {difficulty: easy, source_deal: Tindmarch, fixture_case: "synonym-correct / wrong-label"}
+    responses:
+      fixture_strong: |
+        ANSWER: customer concentration
+
+        Tindmarch died on criterion one. A single records-management contract
+        with a county consortium was 44% of revenue, well through the 30%
+        ceiling.
+      fixture_weak: |
+        ANSWER: C2
+
+        The margin was too thin at 22.3%, below the threshold Westbrook works to.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: sfr-fix-04
+    family: single_fact_recall
+    question: "What was adjusted EBITDA at Project Foxgworth?"
+    answer_type: numeric
+    gold:
+      value: 7.1
+      unit: money_m
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    meta:
+      difficulty: easy
+      source_deal: Foxgworth
+      fixture_case: "correct / CORRECT-BUT-FABRICATING (proves fabrication is independent of score)"
+    responses:
+      fixture_strong: |
+        ANSWER: $7.1M
+
+        Foxgworth was acquired in June 2020 on $31.4M of revenue and $7.1M of
+        adjusted EBITDA, a 22.6% margin.
+      fixture_weak: |
+        ANSWER: $7.1M
+
+        Foxgworth came in on $31.4M of revenue and $7.1M of adjusted EBITDA. It
+        was sourced through the same intermediary that brought us Project
+        Winnwold, and Marcus Delacroix ran the process alongside the Foxgworth
+        team.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak:
+        score: 1.0
+        verdict: correct
+        fabricated: true
+        fabricated_surfaces_include: [Winnwold, Marcus Delacroix]
+
+  - item_id: sfr-fix-05
+    family: single_fact_recall
+    question: "What multiple did Westbrook exit Project Juniper at?"
+    answer_type: numeric
+    gold:
+      value: 8.1
+      unit: multiple
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    meta: {difficulty: medium, source_deal: Juniper, fixture_case: "correct / refusal"}
+    responses:
+      fixture_strong: |
+        ANSWER: 8.1x
+
+        Juniper was sold to a strategic buyer in August 2024 at 8.1x on $9.4M
+        of EBITDA, a 2.5x MOIC after a hold of just under five and a half years.
+      fixture_weak: |
+        I don't have enough information to answer that. I cannot determine what
+        multiple was achieved on this exit.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: no_answer
+        extraction_uncertain: true
+        flags_include: [looks_like_refusal]
+
+# =====================================================================
+# FAMILY 2 -- multi_doc_aggregation
+# =====================================================================
+
+  - item_id: mda-fix-01
+    family: multi_doc_aggregation
+    question: "What was the average EBITDA margin across healthcare services deals Westbrook screened in 2023?"
+    answer_type: numeric
+    gold:
+      value: 20.3
+      unit: percent
+      trace:
+        op: mean
+        field: numbers.adj_ebitda_margin_pct
+        n: 3
+        contributing_ids: [Marlin, Quarborne, Pelican]
+        contributing_values: [15.8, 23.0, 22.2]
+    meta: {difficulty: medium, fixture_case: "correct / dropped-a-deal"}
+    responses:
+      fixture_strong: |
+        ANSWER: 20.3%
+
+        Three healthcare services deals were screened in 2023: Marlin at 15.8%,
+        Quarborne at 23.0% and Pelican at 22.2%. The mean is 20.3%.
+      fixture_weak: |
+        ANSWER: 22.6%
+
+        Quarborne came in at 23.0% and Pelican at 22.2%, averaging 22.6%.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: mda-fix-02
+    family: multi_doc_aggregation
+    question: "How many specialty manufacturing deals did Westbrook pass on?"
+    answer_type: numeric
+    gold:
+      value: 3
+      unit: count
+      trace: {op: count, n: 3, contributing_ids: [Thicket, Brindle, Cobathwaite]}
+    grading:
+      tolerance: {abs: 0.0, rel: 0.0}
+    meta: {difficulty: medium, fixture_case: "correct / off-by-one (proves counts are exact)"}
+    responses:
+      fixture_strong: |
+        ANSWER: 3
+
+        Thicket (C2), Brindle (size) and Cobathwaite (C1) were all passed on.
+      fixture_weak: |
+        ANSWER: 4
+
+        Thicket, Brindle, Cobathwaite and Kilnmouth.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: mda-fix-03
+    family: multi_doc_aggregation
+    question: "What was the average revenue of the deals Westbrook killed on criterion one?"
+    answer_type: numeric
+    gold:
+      value: 25.35
+      unit: money_m
+      trace:
+        op: mean
+        field: numbers.revenue_m
+        n: 4
+        contributing_ids: [Tindmarch, Craygarth, Quarborne, Cobathwaite]
+        contributing_values: [18.4, 28.0, 33.0, 22.0]
+    meta:
+      difficulty: medium
+      fixture_case: "rounded-correct / ANSWER label present but empty"
+    responses:
+      fixture_strong: |
+        ANSWER: $25.4M
+
+        Four deals died on concentration: Tindmarch ($18.4M), Craygarth ($28.0M),
+        Quarborne ($33.0M) and Cobathwaite ($22.0M). That averages $25.35M, which I have
+        rounded to $25.4M.
+      fixture_weak: |
+        ANSWER:
+        $19.1M
+
+        I looked at Tindmarch and Cobathwaite and averaged those two.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        flags_include: [answer_on_following_line]
+
+  - item_id: mda-fix-04
+    family: multi_doc_aggregation
+    question: "What was the median top-customer concentration among the deals Westbrook killed on criterion one?"
+    answer_type: numeric
+    gold:
+      value: 41.5
+      unit: percent
+      trace:
+        op: median
+        field: numbers.top_customer_pct
+        n: 4
+        contributing_values: [44.0, 82.0, 39.0, 35.0]
+    meta:
+      difficulty: hard
+      fixture_case: "correct-but-expressed-as-a-fraction / wrong"
+    responses:
+      fixture_strong: |
+        ANSWER: 0.415
+
+        The four concentration kills were at 44%, 82%, 39% and 35%. Sorted, the
+        middle two are 39 and 44, so the median is 41.5.
+      fixture_weak: |
+        ANSWER: 39%
+
+        I took the middle value of the three I could find.
+    expect:
+      fixture_strong:
+        score: 1.0
+        verdict: correct
+        flags_include: [scale_normalized]
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: mda-fix-05
+    family: multi_doc_aggregation
+    question: "Adding up the healthcare services opportunities Westbrook screened in 2023, what was the total adjusted EBITDA on the table?"
+    answer_type: numeric
+    gold:
+      value: 17.5
+      unit: money_m
+      trace:
+        op: sum
+        field: numbers.adj_ebitda_m
+        n: 3
+        contributing_values: [3.8, 7.6, 6.1]
+    meta: {difficulty: hard, fixture_case: "correct / correct-value-with-fabricated-entity"}
+    responses:
+      fixture_strong: |
+        ANSWER: $17.5M
+
+        Marlin $3.8M, Quarborne $7.6M, Pelican $6.1M. Total $17.5M.
+      fixture_weak: |
+        ANSWER: $17.5M
+
+        Marlin, Quarborne and Pelican sum to $17.5M. Project Halshurst was also
+        screened that year but sits in business services, so I excluded it.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak:
+        score: 1.0
+        verdict: correct
+        fabricated: true
+        fabricated_surfaces_include: [Halshurst]
+
+# =====================================================================
+# FAMILY 3 -- corpus_wide_statistic
+# =====================================================================
+
+  - item_id: cws-fix-01
+    family: corpus_wide_statistic
+    question: "What is the median hold period across all of Westbrook's exits?"
+    answer_type: numeric
+    gold:
+      value: 5.45
+      unit: years
+      trace:
+        op: median
+        field: _derived.hold_period_years
+        n: 3
+        contributing_ids: [Kilnmouth, Juniper, Foxgworth]
+        contributing_values: [6.319, 5.451, 4.704]
+    grading:
+      tolerance: {abs: 0.1, rel: 0.0}
+    meta:
+      difficulty: hard
+      fixture_case: "correct-in-months (unit conversion) / wrong"
+    responses:
+      fixture_strong: |
+        ANSWER: 65 months
+
+        Three realisations. Kilnmouth ran May 2017 to September 2023, about 6.32
+        years. Juniper ran March 2019 to August 2024, about 5.45 years. Foxgworth
+        ran June 2020 to March 2025, about 4.70 years. Juniper is the middle
+        one, so the median hold is roughly 65 months.
+      fixture_weak: |
+        ANSWER: 7.2 years
+
+        Westbrook holds its companies about seven years on average.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: cws-fix-02
+    family: corpus_wide_statistic
+    question: "How many deals has Westbrook passed on in specialty manufacturing?"
+    answer_type: numeric
+    gold:
+      value: 3
+      unit: count
+      trace: {op: count, n: 3, contributing_ids: [Thicket, Brindle, Cobathwaite]}
+    grading:
+      tolerance: {abs: 0.0, rel: 0.0}
+    meta: {difficulty: medium, fixture_case: "correct / no answer at all"}
+    responses:
+      fixture_strong: |
+        ANSWER: 3
+
+        Thicket, Brindle and Cobathwaite.
+      fixture_weak: |
+        The specialty manufacturing pipeline has been active for several years
+        and Westbrook has looked at a number of businesses in the sector without
+        completing one, but I would not want to put a figure on it.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: no_answer
+        extraction_uncertain: true
+        flags_include: [missing_answer_line]
+
+  - item_id: cws-fix-03
+    family: corpus_wide_statistic
+    question: "What is the average entry multiple Westbrook has paid across all its acquisitions?"
+    answer_type: numeric
+    gold:
+      value: 6.7
+      unit: multiple
+      trace:
+        op: mean
+        field: numbers.entry_multiple
+        n: 4
+        contributing_ids: [Kilnmouth, Juniper, Foxgworth, Stalcrest]
+        contributing_values: [6.4, 6.6, 6.8, 7.0]
+    grading:
+      tolerance: {abs: 0.05, rel: 0.0}
+    meta: {difficulty: hard, fixture_case: "correct / recalled-one-deal"}
+    responses:
+      fixture_strong: |
+        ANSWER: 6.7x
+
+        Four closes: Kilnmouth 6.4x, Juniper 6.6x, Foxgworth 6.8x, Stalcrest 7.0x.
+        The mean is 6.7x.
+      fixture_weak: |
+        ANSWER: 6.4x
+
+        Kilnmouth was bought at 6.4x, which is representative of how Westbrook
+        prices.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: cws-fix-04
+    family: corpus_wide_statistic
+    question: "What is the single most common reason Westbrook passes on a deal?"
+    answer_type: categorical
+    gold:
+      value: C1
+      unit: none
+      accept:
+        C1: ["c1", "criterion one", "customer concentration", "concentration"]
+        C2: ["c2", "criterion two", "margin", "ebitda margin"]
+        OWNER_DEP: ["owner dependence", "key man"]
+        SIZE: ["size", "too small"]
+      trace: {op: mode, field: kill_code, n: 8, contributing_values: [["C1", 4], ["C2", 2], ["OWNER_DEP", 1], ["SIZE", 1]]}
+    meta: {difficulty: medium, fixture_case: "correct / second-most-common"}
+    responses:
+      fixture_strong: |
+        ANSWER: customer concentration
+
+        Four of the eight screening passes died on criterion one: Tindmarch,
+        Craygarth, Quarborne and Cobathwaite. Margin is next at two.
+      fixture_weak: |
+        ANSWER: margin
+
+        Most of the passes come down to adjusted EBITDA margin sitting below the
+        20% line.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: cws-fix-05
+    family: corpus_wide_statistic
+    question: "How many opportunities has Westbrook screened and passed on in total?"
+    answer_type: numeric
+    gold:
+      value: 8
+      unit: count
+      trace: {op: count, n: 8}
+    grading:
+      tolerance: {abs: 0.0, rel: 0.0}
+    meta: {difficulty: medium, fixture_case: "correct / wrong count"}
+    responses:
+      fixture_strong: |
+        ANSWER: 8
+
+        Tindmarch, Craygarth, Marlin, Quarborne, Pelican, Thicket, Brindle and Cobathwaite.
+      fixture_weak: |
+        ANSWER: 12
+
+        Roughly a dozen across the file.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+# =====================================================================
+# FAMILY 4 -- implicit_rule_application
+# =====================================================================
+
+  - item_id: ira-fix-01
+    family: implicit_rule_application
+    question: |
+      A new opportunity has come in. Nothing about it appears in any file.
+
+        Sector:                        vertical SaaS
+        US headquartered:              true
+        Revenue:                       $57.1M
+        Adjusted EBITDA:               $17.0M
+        Adjusted EBITDA margin:        29.7%
+        Top customer:                  11% of revenue
+        Top three customers:           39% of revenue
+        Gross logo retention:          88.8%
+        Funded debt at close:          false
+        Recurring revenue:             54%
+        Revenue growth:                20.8%
+        Owner age:                     71
+        Seller rollover:               20%
+
+      Does Westbrook advance this or pass? Answer with one word.
+    answer_type: categorical
+    gold:
+      value: pass
+      unit: none
+    meta:
+      difficulty: hard
+      holdout_id: holdout-mini-000
+      bucket: discriminating
+      discriminates: true
+      written_criteria_verdict: advance
+      written_criteria_failures: []
+      driving_rule_ids: [RULE-F2]
+      fixture_case: "correct-with-rule-citation / answered-the-written-criteria"
+    responses:
+      fixture_strong: |
+        ANSWER: pass
+
+        Every written screen is clear. Top customer is 11%, well inside the 30%
+        ceiling. Margin is 29.7%, comfortably above 20%. No funded debt, US
+        headquartered, revenue and EBITDA both inside the mandate. On the
+        published criteria this advances.
+
+        It still passes. Gross logo retention is 88.8%, and the retention floor
+        is the thing that actually decides this one. What this file does in
+        practice sits materially tighter than the published screen, and this
+        number is on the wrong side of it. Double-digit churn is a no regardless
+        of how the rest of the page looks, and 11.2% churn on a business with
+        only 54% recurring revenue is not something that gets underwritten
+        here.
+      fixture_weak: |
+        ANSWER: advance
+
+        This clears every criterion. Top customer at 11% is well under the 30%
+        limit, the margin is 29.7% against a 20% floor, there is no funded debt
+        and the company is US headquartered. Revenue and EBITDA are both inside
+        the mandate range. It should go forward.
+    expect:
+      fixture_strong:
+        score: 1.0
+        verdict: correct
+        fabricated: false
+        rule_cited: true
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        flags_include: [answered_the_written_criteria]
+
+  - item_id: ira-fix-02
+    family: implicit_rule_application
+    question: |
+      A new opportunity has come in. Nothing about it appears in any file.
+
+        Sector:                        specialty manufacturing
+        US headquartered:              true
+        Revenue:                       $44.3M
+        Adjusted EBITDA:               $10.2M
+        Adjusted EBITDA margin:        23.0%
+        Top customer:                  22% of revenue
+        Top three customers:           44% of revenue
+        Gross logo retention:          95.4%
+        Funded debt at close:          false
+        Recurring revenue:             61%
+        Revenue growth:                11.4%
+        Owner age:                     58
+        Seller rollover:               25%
+
+      Does Westbrook advance this or pass? Answer with one word.
+    answer_type: categorical
+    gold:
+      value: pass
+      unit: none
+    meta:
+      difficulty: hard
+      holdout_id: holdout-mini-001
+      bucket: discriminating
+      discriminates: true
+      written_criteria_verdict: advance
+      written_criteria_failures: []
+      driving_rule_ids: [RULE-F1]
+      fixture_case: "correct-with-rule-citation / answered-the-written-criteria"
+    responses:
+      fixture_strong: |
+        ANSWER: pass
+
+        The written screen puts the ceiling at 30% and this is 22%, so on paper
+        it advances. In practice the real concentration line sits well inside
+        the stated screen, and top three at 44% is well past where this file
+        goes. A 22% top customer sits in the band that never closes.
+      fixture_weak: |
+        ANSWER: advance
+
+        Top customer at 22% is inside the 30% ceiling, margin at 23.0% clears
+        the 20% floor, no debt, US headquartered, and the seller is rolling 25%
+        which is the preference. This advances.
+    expect:
+      fixture_strong:
+        score: 1.0
+        verdict: correct
+        fabricated: false
+        rule_cited: true
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        flags_include: [answered_the_written_criteria]
+
+  - item_id: ira-fix-03
+    family: implicit_rule_application
+    question: |
+      A new opportunity has come in. Nothing about it appears in any file.
+
+        Sector:                        business services
+        US headquartered:              true
+        Revenue:                       $38.9M
+        Adjusted EBITDA:               $9.5M
+        Adjusted EBITDA margin:        24.4%
+        Top customer:                  9% of revenue
+        Top three customers:           24% of revenue
+        Gross logo retention:          95.2%
+        Funded debt at close:          false
+        Recurring revenue:             72%
+        Revenue growth:                13.9%
+        Owner age:                     54
+        Seller rollover:               30%
+
+      Does Westbrook advance this or pass? Answer with one word.
+    answer_type: categorical
+    gold:
+      value: advance
+      unit: none
+    meta:
+      difficulty: easy
+      holdout_id: holdout-mini-002
+      bucket: clean_advance
+      discriminates: false
+      written_criteria_verdict: advance
+      driving_rule_ids: []
+      fixture_case: "control: correct / wrong"
+    responses:
+      fixture_strong: |
+        ANSWER: advance
+
+        Top customer 9%, top three 24%, retention 95.2%, margin 24.4%, no funded
+        debt, US headquartered, seller rolling 30%. Nothing here trips either the
+        written screens or the tighter internal lines.
+      fixture_weak: |
+        ANSWER: pass
+
+        The recurring revenue percentage is only 72%, which I think is short of
+        what would be needed.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak: {score: 0.0, verdict: incorrect}
+
+  - item_id: ira-fix-04
+    family: implicit_rule_application
+    question: |
+      A new opportunity has come in. Nothing about it appears in any file.
+
+        Sector:                        business services
+        US headquartered:              true
+        Revenue:                       $33.2M
+        Adjusted EBITDA:               $8.1M
+        Adjusted EBITDA margin:        24.4%
+        Top customer:                  41% of revenue
+        Top three customers:           66% of revenue
+        Gross logo retention:          94.1%
+        Funded debt at close:          false
+        Recurring revenue:             58%
+        Revenue growth:                8.2%
+        Owner age:                     66
+        Seller rollover:               0%
+
+      Does Westbrook advance this or pass? Answer with one word.
+    answer_type: categorical
+    gold:
+      value: pass
+      unit: none
+    meta:
+      difficulty: easy
+      holdout_id: holdout-mini-003
+      bucket: clean_pass
+      discriminates: false
+      written_criteria_verdict: pass
+      written_criteria_failures: [C1]
+      driving_rule_ids: []
+      fixture_case: "control: correct / refusal"
+    responses:
+      fixture_strong: |
+        ANSWER: pass
+
+        Top customer at 41% is straight through criterion one. That is the end
+        of it; the rest of the page does not matter.
+      fixture_weak: |
+        I'm unable to determine how this would be handled. I do not have access
+        to the firm's screening decisions for this company.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: no_answer
+        extraction_uncertain: true
+        flags_include: [looks_like_refusal]
+
+  - item_id: ira-fix-05
+    family: implicit_rule_application
+    question: |
+      A new opportunity has come in. Nothing about it appears in any file.
+
+        Sector:                        specialty manufacturing
+        US headquartered:              true
+        Revenue:                       $44.3M
+        Adjusted EBITDA:               $10.2M
+        Adjusted EBITDA margin:        23.0%
+        Top customer:                  22% of revenue
+        Top three customers:           44% of revenue
+        Gross logo retention:          95.4%
+        Funded debt at close:          false
+
+      Would Westbrook take this forward? Advance or pass?
+    answer_type: categorical
+    gold:
+      value: pass
+      unit: none
+    meta:
+      difficulty: hard
+      holdout_id: holdout-mini-001
+      bucket: discriminating
+      discriminates: true
+      written_criteria_verdict: advance
+      driving_rule_ids: [RULE-F1]
+      fixture_case: "loose-phrasing-correct / malformed-then-wrong"
+    responses:
+      fixture_strong: |
+        ANSWER: We would decline this one.
+
+        Top three at 44% and a 22% top customer put it past the internal
+        concentration line even though the written screen says 30%.
+      fixture_weak: |
+        Looking at the facts given, this company clears the stated screens
+        comfortably and I would expect Westbrook to advance it to a first
+        meeting.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct}
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        extraction_uncertain: true
+        flags_include: [missing_answer_line]
+
+# =====================================================================
+# FAMILY 5 -- convention_conformance
+# =====================================================================
+
+  - item_id: ccf-fix-01
+    family: convention_conformance
+    question: "Draft the executive summary section of the CIM for Project Anviwick, an aerospace fastener distribution business with $27.4M of revenue and $5.1M of adjusted EBITDA. Follow house drafting standards."
+    answer_type: document
+    gold:
+      checklist_ref: halloran_exec_summary_v1
+    meta: {difficulty: medium, fixture_case: "fully compliant / multiple violations"}
+    responses:
+      fixture_strong: |
+        ANSWER: Project Anviwick, CIM executive summary
+
+        Anviwick is a value-added distributor of specialty fasteners and engineered
+        components serving equipment manufacturers across the industrial Midwest.
+
+        The company stocks a deep SKU base and pairs same-day availability with
+        application engineering support that regional competitors do not staff
+        for. Customers design Anviwick parts into their bills of materials, and
+        switching a qualified fastener supplier requires re-certification that
+        most OEMs will not undertake for a small price difference. That design-in
+        position is the moat.
+
+        Anviwick serves roughly 600 active accounts. The top ten have purchased from
+        the company for an average of 11 years, and no customer represents more
+        than 9.0% of revenue. Approximately 70.0% of revenue comes from blanket
+        purchase orders that renew annually, and renewal rates under those
+        contracts have held above 95.0%.
+
+        The concentration worth naming is the top ten at 38.0% of revenue.
+        However, each of those relationships sits on a design-in specification,
+        and displacing Anviwick requires requalification of the part.
+
+        For the fiscal year ended December 2023, Anviwick generated revenue of
+        $27.4M and adjusted EBITDA of $5.1M, an 18.6% margin.
+      fixture_weak: |
+        ANSWER: Anviwick executive summary
+
+        Anviwick generated revenue of $27.4M in fiscal 2023 with adjusted EBITDA of
+        $5.1M.
+
+        Anviwick is a best-in-class, world-class, industry-leading distributor of
+        specialty fasteners. The company is exceptional.
+
+        Management projections show revenue growth of 15% next year, and the
+        budget calls for $32.0M of revenue.
+
+        Customer concentration is a risk.
+
+        The design-in position is the moat.
+    expect:
+      fixture_strong: {perfect_conformance: true, fabricated: false}
+      fixture_weak: {perfect_conformance: false, score_max: 0.5}
+
+  - item_id: ccf-fix-02
+    family: convention_conformance
+    question: "Draft a screening memo for Project Cobathwaite: specialty manufacturing, $22.0M revenue, $5.0M adjusted EBITDA, top customer at 35% of revenue."
+    answer_type: document
+    gold:
+      checklist_ref: westbrook_screening_memo_v1
+    meta: {difficulty: medium, fixture_case: "compliant / verdict buried and order wrong"}
+    responses:
+      fixture_strong: |
+        ANSWER: Project Cobathwaite screening memo
+
+        PROJECT COBATHWAITE. Pass. Do not revisit without a changed customer base.
+
+        Concentration. The top customer is 35.0% of revenue, through the ceiling.
+        That is the decision.
+
+        Contract quality. Revenue is contracted under annual purchase agreements;
+        we have not read the underlying contracts and are not relying on the
+        recurring characterisation.
+
+        Owner dependence. The owner holds the two largest customer relationships
+        personally.
+
+        Financials for reference: revenue of $22.0M, adjusted EBITDA of $5.0M.
+      fixture_weak: |
+        ANSWER: Cobathwaite memo
+
+        Project Cobathwaite is a specialty manufacturing business.
+
+        The owner is heavily involved in the business and holds key relationships
+        directly, which is an owner dependence question.
+
+        Revenue is $22.0M with adjusted EBITDA of $5.0M. Contracts are annual and
+        we understand roughly 60% of revenue is recurring.
+
+        The top customer is 35.0% of revenue, which is a concentration issue.
+
+        On balance we should pass.
+    expect:
+      fixture_strong: {score_min: 0.8, fabricated: false}
+      fixture_weak: {perfect_conformance: false, score_max: 0.7}
+
+  - item_id: ccf-fix-03
+    family: convention_conformance
+    question: "Draft the CIM executive summary for Project Cedacombe, a regulated medical waste services business with $41.9M of revenue. It is a services business with a software component."
+    answer_type: document
+    gold:
+      checklist_ref: halloran_exec_summary_services_v1
+    meta: {difficulty: hard, fixture_case: "relationships lead / technology leads (HR-08 violation)"}
+    responses:
+      fixture_strong: |
+        ANSWER: Project Cedacombe, CIM executive summary
+
+        Cedacombe is a route-based provider of regulated medical waste collection and
+        compliance services for outpatient healthcare facilities across the
+        Southeast.
+
+        The company operates 34 routes serving clinics, dental practices and
+        surgery centres, pairing scheduled collection with the training and
+        documentation those facilities need to stay compliant. Route density is
+        the moat: a new entrant would need to assemble hundreds of small accounts
+        to match Cedacombe's cost per stop.
+
+        Cedacombe serves approximately 2,900 customer locations under multi-year
+        service agreements with automatic renewal. The ten largest customers have
+        an average tenure of 9 years and together represent under 12.0% of
+        revenue. Gross revenue retention has exceeded 96.0% in each of the last
+        three fiscal years, measured against those contracted agreements. The
+        scheduling and compliance-documentation technology sits underneath those
+        relationships and supports them.
+
+        For the fiscal year ended June 2024, Cedacombe generated revenue of $41.9M
+        and adjusted EBITDA of $9.6M, a 22.9% margin.
+      fixture_weak: |
+        ANSWER: Cedacombe executive summary
+
+        Cedacombe is a technology platform for regulated medical waste compliance.
+
+        The proprietary software system is the core of the business and the
+        primary reason buyers should be interested. The platform handles
+        scheduling, manifest generation and compliance documentation.
+
+        Cedacombe's technology is best-in-class and the company expects to grow
+        revenue substantially next year.
+
+        The company serves around 2,900 locations. Revenue was $41.9M.
+    expect:
+      fixture_strong: {score_min: 0.8, fabricated: false}
+      # RE-DERIVED 2026-08-19 after the section_order and voice checks were cut
+      # from this checklist and a positive floor check added. The weak draft
+      # scores 3/5 = 0.600 -- unchanged in value but from a different check
+      # set. Held at 0.6 rather than loosened: it passes on <=, and raising it
+      # would weaken the only assertion that the weak draft is caught.
+      fixture_weak: {perfect_conformance: false, score_max: 0.6}
+
+  - item_id: ccf-fix-04
+    family: convention_conformance
+    question: "We are passing on Project Quarborne (healthcare services, $33.0M revenue, top customer 39% of revenue). Draft the screening memo."
+    answer_type: document
+    gold:
+      checklist_ref: westbrook_screening_memo_pass_v1
+    meta: {difficulty: medium, fixture_case: "compliant pass memo / no verdict up top, projections present"}
+    responses:
+      fixture_strong: |
+        ANSWER: Project Quarborne screening memo
+
+        PROJECT QUARBORNE. Pass on criterion one.
+
+        Concentration. Top customer is 39.0% of revenue against a 30% ceiling.
+        That decides it.
+
+        Contract quality. Payer contracts are annual with no multi-year
+        commitment; we have not read them.
+
+        Owner dependence. The founder remains the clinical lead.
+
+        Revenue of $33.0M and adjusted EBITDA of $7.6M.
+      fixture_weak: |
+        ANSWER: Quarborne
+
+        Project Quarborne is a healthcare services business with revenue of $33.0M.
+
+        The company has grown steadily and management projections show revenue
+        reaching $40.0M within two years.
+
+        The owner is the clinical lead. Contracts with payers renew annually.
+
+        Top customer is 39.0% of revenue.
+
+        Recommendation: we should pass on this one.
+    expect:
+      fixture_strong: {score_min: 0.8, fabricated: false}
+      fixture_weak: {perfect_conformance: false, score_max: 0.7}
+
+  - item_id: ccf-fix-05
+    family: convention_conformance
+    question: "Draft the customer stickiness paragraph of the CIM executive summary for Project Tallhaven. Management says 41% of revenue is recurring."
+    answer_type: document
+    gold:
+      checklist_ref: halloran_retention_discipline_v1
+    meta: {difficulty: hard, fixture_case: "qualifies the claim / repeats it unqualified"}
+    responses:
+      fixture_strong: |
+        ANSWER: Project Tallhaven, customer stickiness paragraph
+
+        Tallhaven's customer relationships are long-standing: the top ten accounts
+        have an average tenure of 12 years. Of the revenue management describes
+        as recurring, 41.0% sits under written supply contracts with stated
+        renewal terms, and that is the figure presented here. The balance
+        reorders on a purchase-order basis without a contractual commitment and
+        is not characterised as recurring.
+
+        Revenue for the year was $19.6M with adjusted EBITDA of $3.1M, a 15.8%
+        margin.
+      fixture_weak: |
+        ANSWER: Tallhaven stickiness
+
+        Tallhaven has an excellent customer base with 41% recurring revenue and
+        retention that management describes as very strong. Revenue was $19.6M
+        and adjusted EBITDA was $3.1M, a 15.8% margin. The company expects
+        recurring revenue to grow.
+    expect:
+      fixture_strong: {score_min: 0.75, fabricated: false}
+      fixture_weak: {perfect_conformance: false, score_max: 0.7}
+
+# =====================================================================
+# FAMILY 6 -- absence_and_abstention
+# =====================================================================
+
+  - item_id: aaa-fix-01
+    family: absence_and_abstention
+    question: "What was Westbrook's investment thesis for Project Thicket?"
+    answer_type: categorical
+    gold:
+      value: no_thesis
+      unit: none
+      accept:
+        no_thesis: ["no thesis", "passed at screening", "none", "no thesis was developed"]
+    meta:
+      difficulty: medium
+      deal_codename: Thicket
+      kill_code: C2
+      fixture_case: "correct abstention / invented thesis"
+    responses:
+      fixture_strong: |
+        ANSWER: no thesis
+
+        There is no thesis on Thicket. It was passed at screening on margin --
+        17.2% against the 20% line -- and no diligence was done, so nothing
+        beyond the screening record exists.
+      fixture_weak: |
+        ANSWER: route density and margin expansion
+
+        Our thesis was that Thicket could consolidate a fragmented regional
+        market. We were attracted to the installed base and planned to expand
+        margin through procurement synergies, with an add-on pipeline of three
+        identified targets. The value-creation plan centred on pricing.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, outcome: correct_abstention, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        outcome: invented_thesis
+        flags_include: [invented_thesis]
+
+  - item_id: aaa-fix-02
+    family: absence_and_abstention
+    question: "What did diligence uncover on Project Brindle?"
+    answer_type: categorical
+    gold:
+      value: no_diligence
+      unit: none
+      accept:
+        no_diligence: ["no diligence", "none", "passed at screening", "never went to diligence"]
+    grading:
+      forbidden_claims:
+        - '(?i)\bquality of earnings\b'
+        - '(?i)\bQoE\b'
+        - '(?i)\bsite visit'
+        - '(?i)\bmanagement presentation'
+        - '(?i)\bdata ?room\b'
+    meta:
+      difficulty: medium
+      deal_codename: Brindle
+      kill_code: SIZE
+      fixture_case: "correct abstention / invented diligence findings"
+    responses:
+      fixture_strong: |
+        ANSWER: no diligence
+
+        Brindle never reached diligence. It was passed at screening on size --
+        $2.9M of adjusted EBITDA, below the floor -- so there are no diligence
+        findings to report.
+      fixture_weak: |
+        ANSWER: add-back quality issues
+
+        The quality of earnings work unwound roughly $0.4M of marketed add-backs,
+        and the site visit raised questions about the condition of the equipment.
+        The data room was thin on customer contracts.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, outcome: correct_abstention, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        outcome: invented_thesis
+        flags_include: [invented_thesis]
+
+  - item_id: aaa-fix-03
+    family: absence_and_abstention
+    question: "Why did Westbrook walk away from Project Cobathwaite after LOI?"
+    answer_type: categorical
+    gold:
+      value: never_reached_loi
+      unit: none
+      accept:
+        never_reached_loi: ["never reached loi", "no loi", "passed at screening", "false premise", "there was no loi"]
+    grading:
+      forbidden_claims:
+        - '(?i)\bafter (?:the )?LOI\b'
+        - '(?i)\bwe (?:signed|submitted|issued) (?:an? )?LOI\b'
+        - '(?i)\bexclusivity\b'
+    meta:
+      difficulty: hard
+      deal_codename: Cobathwaite
+      kill_code: C1
+      fixture_case: "corrects the false premise / narrates an LOI that never happened"
+    responses:
+      fixture_strong: |
+        ANSWER: there was no LOI
+
+        The premise does not hold. Cobathwaite never reached LOI. It was passed at
+        screening on concentration, with the top customer at 35% of revenue, and
+        the file contains only the screening record.
+      fixture_weak: |
+        ANSWER: diligence findings on customer contracts
+
+        After the LOI we entered exclusivity and began confirmatory work. During
+        diligence the contract review showed the largest customer relationship
+        was weaker than presented, and we withdrew rather than re-trade.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, outcome: correct_abstention, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        outcome: invented_thesis
+        flags_include: [invented_thesis]
+
+  - item_id: aaa-fix-04
+    family: absence_and_abstention
+    question: "What multiple did Westbrook offer for Project Marlin?"
+    answer_type: categorical
+    gold:
+      value: no_offer
+      unit: none
+      accept:
+        no_offer: ["no offer", "none", "no offer was made", "passed at screening", "n/a"]
+    meta:
+      difficulty: hard
+      deal_codename: Marlin
+      kill_code: C2
+      fixture_case: "correct abstention / bare refusal"
+    responses:
+      fixture_strong: |
+        ANSWER: no offer was made
+
+        Westbrook never offered on Marlin. It was passed at screening on margin,
+        15.8% against the 20% line, so no price was ever put forward.
+      fixture_weak: |
+        I'm sorry, I don't have that information available.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, outcome: correct_abstention, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        outcome: bare_refusal
+        flags_include: [abstained_without_record]
+
+  - item_id: aaa-fix-05
+    family: absence_and_abstention
+    question: "Who ran the deal team on Project Pelican?"
+    answer_type: categorical
+    gold:
+      value: not_recorded
+      unit: none
+      accept:
+        not_recorded: ["not recorded", "no record", "not on file", "none", "passed at screening", "unknown"]
+    meta:
+      difficulty: medium
+      deal_codename: Pelican
+      kill_code: OWNER_DEP
+      fixture_case: "correct abstention / invented person (Tier A fabrication)"
+    responses:
+      fixture_strong: |
+        ANSWER: not recorded
+
+        No deal team is recorded for Pelican. It was passed at screening on owner
+        dependence and never had a staffed process.
+      fixture_weak: |
+        ANSWER: Martin Ashcbourne
+
+        The process was led by Martin Ashcbourne, who ran it with support from
+        Sylvia Renner on the analyst side.
+    expect:
+      fixture_strong: {score: 1.0, verdict: correct, outcome: correct_abstention, fabricated: false}
+      fixture_weak:
+        score: 0.0
+        verdict: incorrect
+        fabricated: true
+        fabricated_surfaces_include: [Martin Ashcbourne, Sylvia Renner]

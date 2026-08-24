@@ -1,0 +1,202 @@
+# ARM DEFINITIONS
+#
+# Arms are pure configuration. Adding an ablation or changing a model is an edit
+# to THIS FILE and nothing else. Only a new KIND of transport needs Python.
+#
+# THE COMPARISON THIS FILE HAS TO PROTECT
+# ---------------------------------------
+# The claim is that a model which studied this firm's history answers better
+# than the same model searching it without having studied. Arms A and C are
+# therefore the same weights, the same tools, the same prompts, the same
+# decoding parameters, and differ at EXACTLY ONE configuration path:
+#
+#     params.lora_adapter
+#
+# C's is null. If anything else diverges -- a different temperature, a different
+# max_tokens, one arm losing its search tool -- then A minus C stops being "the
+# adapter" and becomes "the adapter plus whatever else drifted", and nothing in
+# the result can be attributed. `tests/test_arms_abc.py` asserts the structural
+# identity so drift fails the suite rather than the analysis.
+#
+# ZERO MODEL CALLS
+# ----------------
+# Every network arm is `enabled: false`, and harness/arms.py additionally
+# requires BENCHMARK_ALLOW_NETWORK=1. Two switches, both off, and no transport
+# is implemented for any of them.
+#
+# TO ADD AN ARM
+#   my_new_arm:
+#     type: sediment | anthropic_api | local_cli_subprocess | openai_compatible | http | constant | fixture | null
+#     enabled: false
+#     model: <model id>
+#     endpoint: <url, or the executable for a subprocess transport>
+#     cartridge: <id, or null>
+#     tools: [corpus_search]
+#     params: { temperature: 0.0, max_tokens: 2048 }
+#     notes: what this arm is for
+
+arms:
+
+  # ---------------------------------------------------------------- ARM A
+  # The claim: weights that studied the corpus, plus search over it.
+  sediment:
+    type: sediment
+    enabled: false
+    model: qwen3-8b
+    endpoint: null                    # set when the serving endpoint exists
+    cartridge: null
+    tools:
+      - corpus_search
+    params:
+      temperature: 0.0
+      max_tokens: 2048
+      lora_adapter: null              # THE ONLY FIELD THAT MAY DIFFER FROM ARM C
+      corpus_dir: ../sediment-corpus/corpus-v4
+    notes: >-
+      Arm A. Qwen 8B with a LoRA adapter fine-tuned on the corpus, plus a search
+      tool over that same corpus. `lora_adapter` is null until the adapter
+      exists; the A/C identity test asserts structure, not a particular value,
+      so it stays meaningful once a real adapter id is filled in here.
+
+  # ---------------------------------------------------------------- ARM B
+  # An external reference point, not the control. B differs from A in the
+  # weights, the tokenizer, the scale and the harness, so B minus A is not
+  # attributable to any one of those. It is reported because a reader wants to
+  # know where a strong general model lands, not because it isolates anything.
+  claude:
+    type: local_cli_subprocess
+    enabled: false
+    model: claude-opus-5
+    endpoint: claude                  # the executable; a subprocess, not an HTTP endpoint
+    cartridge: null
+    tools:
+      - corpus_search
+    params:
+      temperature: 0.0
+      max_tokens: 2048
+      corpus_dir: ../sediment-corpus/corpus-v4
+      headless: true
+      permission_mode: read_only
+    notes: >-
+      Arm B. Claude Code driven headless with the corpus as its working
+      directory, so its search is over the same documents the other arms
+      search. The transport is a SUBPROCESS with a working directory, not an
+      HTTP request -- `local_cli_subprocess` rather than `anthropic_api` --
+      because the corpus directory is the thing being handed over and an API
+      arm has nowhere to put it.
+
+  # ---------------------------------------------------------------- ARM C
+  # THE CONTROL. Written out in full rather than derived from Arm A: a config
+  # that inherits cannot be diffed, and the whole point of this arm is that the
+  # diff against A is exactly one line.
+  base:
+    type: sediment
+    enabled: false
+    model: qwen3-8b
+    endpoint: null
+    cartridge: null
+    tools:
+      - corpus_search
+    params:
+      temperature: 0.0
+      max_tokens: 2048
+      lora_adapter: null              # null BY DEFINITION -- this is the control
+      corpus_dir: ../sediment-corpus/corpus-v4
+    notes: >-
+      Arm C. The same Qwen 8B as Arm A with no adapter, searching the same
+      corpus. This is the control the whole benchmark rests on: A minus C is the
+      only comparison in which everything except studied knowledge is held
+      fixed. If A does not beat C, the claim fails, and that is the result.
+
+  # ------------------------------------------------- degenerate baseline
+  # Not a model. Answers the same string to every item.
+  constant_pass:
+    type: constant
+    enabled: true
+    model: null
+    params:
+      answer: pass
+    notes: >-
+      Degenerate baseline, reported beside every family score. It exists
+      because a family a constant can beat is not measuring the model. Under
+      the v1 corpus every admissible discriminating holdout target carried gold
+      `pass`, so this arm scored 100% on that slice while reading nothing.
+      `null_arm` does not cover this -- it returns an empty string and scores 0,
+      the opposite failure. Making the degenerate ceiling visible in every
+      report is the only thing that stops the number being read as earned.
+
+  # ONE CONSTANT IS NOT ENOUGH. `constant_pass` alone could only ever catch a
+  # family whose majority gold is `pass`; a family that has quietly become
+  # majority-`advance` would look hard to it while being just as degenerate.
+  # Reporting the MAXIMUM of the two is the honest ceiling, and it is what the
+  # 60% flag in build-report-v2.md is computed against.
+  constant_advance:
+    type: constant
+    enabled: true
+    model: null
+    params:
+      answer: advance
+    notes: >-
+      The other degenerate baseline. Added 2026-08-20 with the balanced sampling
+      of family 4: once the gold split is 43/43 by construction, a single
+      constant tells you nothing about the floor and the pair tells you both
+      halves of it. Not a model, makes no call, needs no transport, and runs
+      under the zero-network constraint like `constant_pass`.
+
+  # ------------------------------------------------- ablations (examples)
+  sediment_with_cartridge:
+    type: sediment
+    enabled: false
+    model: qwen3-8b
+    endpoint: null
+    cartridge: westbrook-v1
+    tools:
+      - corpus_search
+    params:
+      temperature: 0.0
+      max_tokens: 2048
+      lora_adapter: null
+      corpus_dir: ../sediment-corpus/corpus-v4
+    notes: Ablation. Arm A with a cartridge loaded.
+
+  sediment_no_search:
+    type: sediment
+    enabled: false
+    model: qwen3-8b
+    endpoint: null
+    cartridge: null
+    tools: []
+    params:
+      temperature: 0.0
+      max_tokens: 2048
+      lora_adapter: null
+      corpus_dir: null
+    notes: >-
+      Ablation. Weights only, no retrieval. Isolates what the fine-tune holds
+      with nothing to lean on. Note this is NOT the control -- it differs from
+      Arm A in the tools as well, so it cannot stand in for Arm C.
+
+  # ------------------------------------------------------- test-only arms
+  fixture_strong:
+    type: fixture
+    enabled: true
+    model: null
+    notes: >-
+      Replays hand-written responses from fixtures/fixture_items.yaml. No model.
+      Represents a mostly-correct system; used to prove the graders score good
+      answers correctly.
+
+  fixture_weak:
+    type: fixture
+    enabled: true
+    model: null
+    notes: >-
+      Replays the second hand-written response for each fixture item. Wrong
+      answers, malformed answers, fabrications and refusals; used to prove the
+      graders catch each failure mode.
+
+  null_arm:
+    type: "null"
+    enabled: true
+    model: null
+    notes: Returns an empty string. Exercises the empty-response path.

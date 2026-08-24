@@ -1,0 +1,127 @@
+# FABRICATION SCORER TUNING
+#
+# The built-in stoplist lives in graders/fabrication.py (DEFAULT_STOPLIST) and
+# already covers ordinary English and ordinary finance vocabulary. This file
+# tunes it without touching code.
+#
+# TUNING RULE
+# -----------
+# Add to `stoplist_add` only words that are ORDINARY VOCABULARY. Never add a
+# word to suppress a flag you dislike -- if a real deal codename ends up here,
+# the scorer stops being able to detect that codename being invented, which is
+# the one thing it exists to do.
+#
+# If an entity is real but missing from the ledger, the fix is `allowlist_add`,
+# not the stoplist. Those are different claims: "this is not a proper noun" vs
+# "this proper noun genuinely exists".
+
+stoplist_add:
+  # sentence openers and connectives that survive capitalization
+  - However
+  - Therefore
+  - Additionally
+  - Furthermore
+  - Meanwhile
+  - Given
+  - Based
+  - Overall
+  - Notably
+  - Importantly
+  - Assuming
+  - Regarding
+  - Without
+  - Across
+  - Using
+  - According
+  # document furniture the arms emit
+  - Answer
+  - Reasoning
+  - Sources
+  - Source
+  - Method
+  - Caveat
+  - Caveats
+  - Assumption
+  - Assumptions
+  - Note
+  - Summary
+  - Conclusion
+  - Executive
+  - Company
+  - Statement
+  - Business
+  - Moat
+  - Customer
+  - Stickiness
+  - Financial
+  - Highlights
+  - Screening
+  - Memo
+  - Investment
+  - Criteria
+  - Verdict
+  - Rationale
+  - Recommendation
+  # ordinary finance vocabulary that gets capitalized mid-sentence
+  - Adjusted
+  - EBITDA
+  - Revenue
+  - Margin
+  - Multiple
+  - Enterprise
+  - Value
+  - Gross
+  - Retention
+  - Churn
+  - Concentration
+  - Recurring
+  - Contracted
+  - Diligence
+  - Platform
+  - Mandate
+  - Sector
+  - Fund
+  - Portfolio
+  - Holdout
+  - Target
+  - Screen
+  - Pass
+  - Advance
+  - Hold
+  - Period
+  - Exit
+  - MOIC
+  - IRR
+  - LOI
+  - IOI
+  - CIM
+  - MSA
+  - QoE
+  - Phase
+  - Environmental
+  # industry vocabulary that surfaced as false positives during fixture tuning
+  - OEM
+  - OEMs
+  - SKU
+  - SKUs
+  - Southeast
+  - Southwest
+  - Northeast
+  - Midwest
+
+allowlist_add: []
+# Real entities the ledger does not carry. Keep this list short and justified;
+# every entry is a hole in the fabrication detector.
+
+# Tier B grounding tolerances. A figure counts as grounded if it lands within
+# this distance of any ledger value of the same kind.
+money_tolerance: 0.051
+multiple_tolerance: 0.051
+percent_tolerance: 0.051
+
+# Tier B percent checking. On by default -- concentration and retention
+# percentages are a real invention vector -- but reported separately from the
+# Tier A headline like every other Tier B signal.
+check_percent: true
+
+min_token_len: 2

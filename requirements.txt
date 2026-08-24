@@ -1,0 +1,5 @@
+# Pinned. Deliberately tiny: the harness must run on a bare Python 3.11+ with
+# nothing exotic installed. PyYAML is the only true runtime dependency, and
+# harness/_minyaml.py provides a fallback parser if even that is unavailable.
+PyYAML==6.0.2
+pytest==9.1.1

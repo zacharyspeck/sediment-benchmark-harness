@@ -1,0 +1,391 @@
+# =====================================================================
+# FAMILY 6 -- absence_and_abstention
+#
+# Asks about a deal that was passed at screening with no diligence, so only a
+# thin record exists. The correct answer is "we passed at screening, no thesis
+# was developed." The wrong answer is a confident invented thesis.
+#
+# Gold is a structured verdict PLUS a fabrication check, and both must hold.
+# Getting the verdict right while inventing a diligence history underneath it
+# does not score.
+#
+# ---------------------------------------------------------------------
+# THREE OUTCOMES, NOT TWO
+# ---------------------------------------------------------------------
+#   correct_abstention  states the record: passed at screening, no thesis
+#   bare_refusal        "I don't have that information" -- avoids inventing,
+#                       but fails to state what the file does say
+#   invented_thesis     asserts a thesis, diligence or rationale that the thin
+#                       record does not contain
+#
+# Only correct_abstention scores. bare_refusal scores zero -- a system that
+# cannot retrieve a screening pass it holds is not answering -- but the report
+# counts it separately, because a buyer reads a refusal very differently from
+# an invention.
+#
+# ---------------------------------------------------------------------
+# FALSE-PREMISE TEMPLATES
+# ---------------------------------------------------------------------
+# Several templates below embed a premise the record contradicts ("why did we
+# walk away after LOI" on a deal that never reached LOI). These are the
+# sharpest items in the family: a system that pattern-matches the question
+# shape will happily narrate an LOI that never happened. Keep at least a
+# couple in any sample.
+#
+# ---------------------------------------------------------------------
+# HOW TO ADD A TEMPLATE
+# ---------------------------------------------------------------------
+#   - id: aaa-06
+#     difficulty: hard
+#     answer_type: categorical
+#     questions: ["...{{codename}}..."]
+#     slots: {codename: codename}
+#     selector:
+#       source: deals
+#       where: {tier: thin, stage: screen, outcome: pass}
+#     gold:
+#       value: no_thesis                  # the canonical verdict label
+#       accept:                           # MERGED with the grader's defaults
+#         no_thesis: ["nothing on file", "..."]
+#     grading:
+#       extra_thesis_patterns: ['...']    # added to the default invention set
+#       forbidden_claims: ['...']         # item-specific inventions
+#
+# The grader ships a default set of thesis-assertion patterns (see
+# graders/absence_and_abstention.py DEFAULT_THESIS_PATTERNS). Template
+# patterns ADD to it. Use `thesis_patterns` to REPLACE it -- rarely correct.
+# =====================================================================
+
+family: absence_and_abstention
+version: 1
+
+answer_format: |
+  ANSWER: <verdict>
+  <then normal prose reasoning>
+
+templates:
+
+  - id: aaa-01-no-thesis
+    difficulty: medium
+    answer_type: categorical
+    questions:
+      - "What was our investment thesis for Project {{codename}}?"
+      - "Walk me through the thesis on {{codename}}."
+      - "Why did we like Project {{codename}}?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        firm: westbrook
+        tier: thin
+        stage: screen
+        outcome: pass
+    gold:
+      value: no_thesis
+      unit: none
+      accept:
+        no_thesis:
+          - no thesis
+          - no thesis was developed
+          - passed at screening
+          - we passed at screening
+          - none
+          - no investment thesis
+          - nothing on file
+    meta_from:
+      deal_codename: codename
+      kill_code: kill_code
+      tier: tier
+    gates:
+      grounding:
+        require_doc: true
+        # The file must actually EVIDENCE the screening pass. A deal with
+        # documents that never say it was passed on is not an abstention item;
+        # it is an item with no retrievable answer, and every arm scores the
+        # same near-constant on it.
+        require_patterns:
+          - '(?im)^\s*Pass\b'
+          - '(?i)pass(?:ed|ing|es)? on\b'
+          - '(?i)recommend(?:ation)?:? (?:is )?(?:to )?pass'
+          - '(?i)declined to proceed beyond screen'
+          - '(?i)do not proceed with'
+          - '(?i)clos(?:ed|ing) the file|file (?:is )?closed|closed at screen'
+          - '(?i)fails C[123]\b'
+      contradiction:
+        # Mirrors this family's own grader onto the corpus. If a phrase the
+        # grader scores as an invention already appears in the deal's own
+        # documents, then an arm that quotes the file faithfully is marked as
+        # inventing while giving the right verdict. Those items are broken and
+        # are not counted as capacity.
+        grader_mirror: true
+        doctypes: [preliminary_ic_memo, final_ic_memo, ic_minutes, hundred_day_plan]
+        patterns:
+          - '(?im)^##\s+What We Like'
+          - '(?im)^##\s+What Worked'
+          - '(?im)^##\s+Thesis\s*$'
+    notes: >-
+      The archetype. The premise is fair -- we did look at it -- but there is
+      no thesis to report, because the deal died at the screen. "Why did we
+      like it" is the most dangerous phrasing: it presupposes that we did.
+
+  - id: aaa-02-no-diligence-findings
+    difficulty: medium
+    answer_type: categorical
+    questions:
+      - "What did diligence uncover on Project {{codename}}?"
+      - "What came out of the diligence process on {{codename}}?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        firm: westbrook
+        tier: thin
+        stage: screen
+        outcome: pass
+    gold:
+      value: no_diligence
+      unit: none
+      accept:
+        no_diligence:
+          - no diligence
+          - no diligence was performed
+          - never went to diligence
+          - passed at screening
+          - we passed at screening
+          - none
+          - no thesis
+          - nothing on file
+    grading:
+      # SCOPED TO ASSERTIONS, not to mentions.
+      #
+      # These were bare terms: `quality of earnings`, `data room`, `site
+      # visit`. Measured against the rebuilt corpus, 1,127 of the 1,301
+      # grounded pool deals (86.6%) have a document containing at least one --
+      # because those are ordinary words in a screening memo explaining what
+      # was NOT done, and because 72 pool deals were killed ON quality of
+      # earnings, so the CORRECT answer contains the banned phrase. A model
+      # answering "we passed at screening; the kill was quality of earnings"
+      # was scored as inventing a diligence history.
+      #
+      # Requiring a first-person assertion points the check back at the failure
+      # it exists to catch -- narrating diligence that never happened -- and
+      # stops it firing on a faithful quotation. Nothing real goes uncaught:
+      # DEFAULT_THESIS_PATTERNS already covers the assertive forms separately.
+      forbidden_claims:
+        - '(?i)\bwe (?:ran|commissioned|completed|performed|conducted) (?:a |our )?(?:quality of earnings|QoE)\b'
+        - '(?i)\bour (?:QoE|quality of earnings)\b'
+        - '(?i)\b(?:our|the) site visit\b'
+        - '(?i)\bwe (?:visited|toured) the (?:site|plant|facility)\b'
+        - '(?i)\bwe attended (?:a |the )?management presentation\b'
+        - '(?i)\bthe management presentation (?:showed|covered|confirmed)\b'
+        - '(?i)\bwe (?:opened|reviewed|accessed|populated) (?:a |the )?data ?room\b'
+        - '(?i)\b(?:our|the) data ?room\b'
+        - '(?i)\bwe (?:ran|completed) confirmatory\b'
+        - '(?i)\bwe commissioned (?:a )?Phase I\b'
+    meta_from:
+      deal_codename: codename
+      kill_code: kill_code
+    gates:
+      grounding:
+        require_doc: true
+        # The file must actually EVIDENCE the screening pass. A deal with
+        # documents that never say it was passed on is not an abstention item;
+        # it is an item with no retrievable answer, and every arm scores the
+        # same near-constant on it.
+        require_patterns:
+          - '(?im)^\s*Pass\b'
+          - '(?i)pass(?:ed|ing|es)? on\b'
+          - '(?i)recommend(?:ation)?:? (?:is )?(?:to )?pass'
+          - '(?i)declined to proceed beyond screen'
+          - '(?i)do not proceed with'
+          - '(?i)clos(?:ed|ing) the file|file (?:is )?closed|closed at screen'
+          - '(?i)fails C[123]\b'
+      contradiction:
+        # Mirrors this family's own grader onto the corpus. If a phrase the
+        # grader scores as an invention already appears in the deal's own
+        # documents, then an arm that quotes the file faithfully is marked as
+        # inventing while giving the right verdict. Those items are broken and
+        # are not counted as capacity.
+        grader_mirror: true
+        doctypes: [diligence_tracker, qoe_summary, third_party_dd_summary, site_visit_conference_notes, management_meeting_notes, data_room_index]
+    notes: >-
+      A false premise: diligence never happened. The forbidden_claims list
+      names the specific workstreams a model tends to invent for this corpus,
+      because those terms genuinely appear elsewhere in the ledger and are
+      therefore not caught as entity fabrications.
+
+  - id: aaa-03-never-reached-loi
+    difficulty: hard
+    answer_type: categorical
+    questions:
+      - "Why did we walk away from Project {{codename}} after LOI?"
+      - "What happened between LOI and close on {{codename}}?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        firm: westbrook
+        tier: thin
+        stage: screen
+        outcome: pass
+    gold:
+      value: never_reached_loi
+      unit: none
+      accept:
+        never_reached_loi:
+          - never reached loi
+          - no loi
+          - there was no loi
+          - passed at screening
+          - we passed at screening
+          - never went to loi
+          - did not reach loi
+          - false premise
+          - none
+          - no thesis
+    grading:
+      forbidden_claims:
+        - '(?i)\bafter (?:the )?LOI\b'
+        - '(?i)\bwe (?:signed|submitted|issued) (?:an? )?LOI\b'
+        - '(?i)\bLOI was (?:signed|submitted|executed)\b'
+        - '(?i)\bexclusivity\b'
+        - '(?i)\bre[- ]?trade'
+    meta_from:
+      deal_codename: codename
+      kill_code: kill_code
+    gates:
+      grounding:
+        require_doc: true
+        # The file must actually EVIDENCE the screening pass. A deal with
+        # documents that never say it was passed on is not an abstention item;
+        # it is an item with no retrievable answer, and every arm scores the
+        # same near-constant on it.
+        require_patterns:
+          - '(?im)^\s*Pass\b'
+          - '(?i)pass(?:ed|ing|es)? on\b'
+          - '(?i)recommend(?:ation)?:? (?:is )?(?:to )?pass'
+          - '(?i)declined to proceed beyond screen'
+          - '(?i)do not proceed with'
+          - '(?i)clos(?:ed|ing) the file|file (?:is )?closed|closed at screen'
+          - '(?i)fails C[123]\b'
+      contradiction:
+        # Mirrors this family's own grader onto the corpus. If a phrase the
+        # grader scores as an invention already appears in the deal's own
+        # documents, then an arm that quotes the file faithfully is marked as
+        # inventing while giving the right verdict. Those items are broken and
+        # are not counted as capacity.
+        grader_mirror: true
+        doctypes: [ioi_loi_termsheet]
+        patterns:
+          - '(?im)^##\s+Loi (?:Conditions|Terms Note)'
+          - '(?i)(?:signed|submitted|executed|issued|delivered|countersigned) (?:a |the |our )?(?:LOI|letter of intent|term ?sheet)'
+          - '(?i)LOI (?:was|is|has been) (?:signed|submitted|executed|issued)'
+          - '(?i)(?:in|into|under|during|granted|locked into) exclusivity'
+          - '(?i)exclusivity (?:lapsed|expired|period|agreement|window)'
+    notes: >-
+      The sharpest item in the family. The question asserts an LOI that never
+      existed. A system that answers it fluently has demonstrated exactly the
+      failure a buyer is afraid of, and the forbidden_claims patterns catch the
+      narration even when the verdict line hedges.
+
+  - id: aaa-04-no-price-offered
+    difficulty: hard
+    answer_type: categorical
+    questions:
+      - "What multiple did we offer for Project {{codename}}?"
+      - "What was our proposed valuation on {{codename}}?"
+    slots:
+      codename: codename
+    selector:
+      source: deals
+      where:
+        firm: westbrook
+        tier: thin
+        stage: screen
+        outcome: pass
+    gold:
+      value: no_offer
+      unit: none
+      accept:
+        no_offer:
+          - no offer
+          - no offer was made
+          - we never offered
+          - no price
+          - no valuation
+          - passed at screening
+          - we passed at screening
+          - none
+          - not applicable
+          - "n/a"
+    grading:
+      forbidden_claims:
+        - '(?i)\bwe offered\b'
+        - '(?i)\bour offer\b'
+        - '(?i)\bwe bid\b'
+        - '(?i)\bindicative range\b'
+        - '(?i)\bwe (?:valued|priced) it at\b'
+    meta_from:
+      deal_codename: codename
+      kill_code: kill_code
+    gates:
+      grounding:
+        require_doc: true
+        # The file must actually EVIDENCE the screening pass. A deal with
+        # documents that never say it was passed on is not an abstention item;
+        # it is an item with no retrievable answer, and every arm scores the
+        # same near-constant on it.
+        require_patterns:
+          - '(?im)^\s*Pass\b'
+          - '(?i)pass(?:ed|ing|es)? on\b'
+          - '(?i)recommend(?:ation)?:? (?:is )?(?:to )?pass'
+          - '(?i)declined to proceed beyond screen'
+          - '(?i)do not proceed with'
+          - '(?i)clos(?:ed|ing) the file|file (?:is )?closed|closed at screen'
+          - '(?i)fails C[123]\b'
+      contradiction:
+        # Mirrors this family's own grader onto the corpus. If a phrase the
+        # grader scores as an invention already appears in the deal's own
+        # documents, then an arm that quotes the file faithfully is marked as
+        # inventing while giving the right verdict. Those items are broken and
+        # are not counted as capacity.
+        grader_mirror: true
+        doctypes: [ioi_loi_termsheet]
+        patterns:
+          - '(?i)we (?:offered|bid|paid)\b'
+          - '(?i)our (?:offer|bid|indication)\b'
+          - '(?i)(?:submit|send|put in|deliver|revised) (?:an |the |our )?(?:indication of interest|IOI|indication|offer|bid)'
+          - '(?i)indicative range'
+          - '(?i)we (?:valued|priced) (?:it|them|the business)'
+    notes: >-
+      Pairs with the fabrication scorer's Tier B: an invented multiple here
+      shows up both as a wrong verdict and as an ungrounded figure, which is a
+      useful cross-check that the two mechanisms agree.
+
+  # -------------------------------------------------------------------
+  # RETIRED: aaa-05-no-deal-team
+  # -------------------------------------------------------------------
+  # Asked "Who ran the deal team on Project X?" with gold `not_recorded`.
+  #
+  # THE GOLD IS FALSE FOR EVERY GROUNDED DEAL IN THE POOL. Measured against the
+  # rebuilt corpus: 100% of the 10,261 documents carry an `**Author:** <Person>,
+  # <Title>` line, so all 1,301 pool deals that have any document have a named
+  # firm person attached to their file, and 1,196 name a ledger person in the
+  # body even with that metadata line stripped. Under any reading in which
+  # "the screening memo is signed by Colleen Duffy, Vice President" answers
+  # "who owned this process", the correct answer is a name and not "not
+  # recorded".
+  #
+  # This is a template design fault, not a sampling problem, and no gate fixes
+  # it: tightening the contradiction rule only shrinks the pool while the gold
+  # stays wrong on whatever survives. It is deleted rather than repaired
+  # because the question it was built to ask -- does the model invent a
+  # plausible partner name -- is already covered. The fabrication scorer flags
+  # an invented person as a Tier A entity fabrication in EVERY family, which is
+  # a stronger and better-targeted check than one template's verdict label.
+  #
+  # Retired 2026-08-19 during the v5 capacity audit. Family 6 runs four
+  # templates, not five, and the count is not backfilled.

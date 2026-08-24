@@ -1,0 +1,804 @@
+{
+  "schema": "normalized",
+  "meta": {
+    "version": "mini-1.0.0",
+    "note": "Hand-written miniature ledger in the NORMALIZED shape produced by harness/ledger.py. It exists so the fixture suite is hermetic and deterministic: the real corpus ledger is being rebuilt continuously, and a test suite whose expected values move underneath it is not a test suite. Entity names and figures are drawn from the same fictional firms so the fabrication allowlist behaves realistically. NOT a substitute for the real ledger - it is deliberately tiny.",
+    "built_by": "benchmark-v1 fixtures"
+  },
+  "firms": {
+    "westbrook": {
+      "name": "Westbrook Capital Partners",
+      "founded": "2016-01-04",
+      "type": "lower-mid-market private equity"
+    },
+    "halloran": {
+      "name": "Halloran & Co.",
+      "founded": "2015-01-05",
+      "type": "boutique M&A advisory, sell-side"
+    }
+  },
+  "people": [
+    {
+      "id": "wb-wray",
+      "firm": "westbrook",
+      "name": "Ellis Wray",
+      "title": "Co-founder & Managing Partner",
+      "employment_start": "2016-01-04",
+      "employment_end": null
+    },
+    {
+      "id": "wb-kerrigan",
+      "firm": "westbrook",
+      "name": "Nadia Kerrigan",
+      "title": "Co-founder & Managing Partner",
+      "employment_start": "2016-01-04",
+      "employment_end": null
+    },
+    {
+      "id": "wb-raval",
+      "firm": "westbrook",
+      "name": "Deepak Raval",
+      "title": "Principal",
+      "employment_start": "2018-03-05",
+      "employment_end": null
+    },
+    {
+      "id": "hl-halloran",
+      "firm": "halloran",
+      "name": "Jim Halloran",
+      "title": "Founder & Managing Director",
+      "employment_start": "2015-01-05",
+      "employment_end": null
+    },
+    {
+      "id": "hl-anand",
+      "firm": "halloran",
+      "name": "Priya Anand",
+      "title": "Analyst",
+      "employment_start": "2021-06-07",
+      "employment_end": "2024-05-31"
+    }
+  ],
+  "funds": [
+    {
+      "id": "wcp-i",
+      "name": "Westbrook Capital Partners Fund I, L.P.",
+      "vintage": 2016,
+      "size_m": 180.0,
+      "first_close": "2016-06-30",
+      "investment_period_end": "2021-06-30"
+    },
+    {
+      "id": "wcp-ii",
+      "name": "Westbrook Capital Partners Fund II, L.P.",
+      "vintage": 2021,
+      "size_m": 340.0,
+      "first_close": "2021-09-30",
+      "investment_period_end": null
+    }
+  ],
+  "deals": [
+    {
+      "id": "wb-kilnmouth",
+      "firm": "westbrook",
+      "codename": "Kilnmouth",
+      "tier": "thick",
+      "kind": "platform",
+      "date": "2017-05-18",
+      "year": 2017,
+      "sector": "specialty manufacturing",
+      "fund": "wcp-i",
+      "numbers": {
+        "revenue_m": 22.6,
+        "adj_ebitda_m": 4.8,
+        "adj_ebitda_margin_pct": 21.2,
+        "entry_multiple": 6.4,
+        "top_customer_pct": 11,
+        "entry_ev_m": 30.7,
+        "gross_logo_retention_pct": 96.1
+      },
+      "stage": "closed",
+      "outcome": "platform",
+      "kill_code": null,
+      "exit": {
+        "date": "2023-09-12",
+        "multiple": 9.2,
+        "ebitda_at_exit": 11.4,
+        "moic": 3.4,
+        "buyer_type": "strategic"
+      },
+      "distinguishing_fact": "Industrial refractory maintenance and reline services. Fund I's proof case.",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-juniper",
+      "firm": "westbrook",
+      "codename": "Juniper",
+      "tier": "thick",
+      "kind": "platform",
+      "date": "2019-03-11",
+      "year": 2019,
+      "sector": "business services",
+      "fund": "wcp-i",
+      "numbers": {
+        "revenue_m": 24.5,
+        "adj_ebitda_m": 5.2,
+        "adj_ebitda_margin_pct": 21.2,
+        "entry_multiple": 6.6,
+        "top_customer_pct": 10,
+        "entry_ev_m": 34.3,
+        "gross_logo_retention_pct": 94.8
+      },
+      "stage": "closed",
+      "outcome": "platform",
+      "kill_code": null,
+      "exit": {
+        "date": "2024-08-22",
+        "multiple": 8.1,
+        "ebitda_at_exit": 9.4,
+        "moic": 2.5,
+        "buyer_type": "strategic"
+      },
+      "distinguishing_fact": "Records management and secure destruction, route-dense in the upper Midwest.",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-foxgworth",
+      "firm": "westbrook",
+      "codename": "Foxgworth",
+      "tier": "thick",
+      "kind": "platform",
+      "date": "2020-06-30",
+      "year": 2020,
+      "sector": "consumer products & services",
+      "fund": "wcp-i",
+      "numbers": {
+        "revenue_m": 31.4,
+        "adj_ebitda_m": 7.1,
+        "adj_ebitda_margin_pct": 22.6,
+        "entry_multiple": 6.8,
+        "top_customer_pct": 9,
+        "entry_ev_m": 48.3,
+        "gross_logo_retention_pct": 93.7
+      },
+      "stage": "closed",
+      "outcome": "platform",
+      "kill_code": null,
+      "exit": {
+        "date": "2025-03-14",
+        "multiple": 8.6,
+        "ebitda_at_exit": 12.2,
+        "moic": 2.7,
+        "buyer_type": "sponsor"
+      },
+      "distinguishing_fact": "The only consumer platform in Fund I.",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-stalcrest",
+      "firm": "westbrook",
+      "codename": "Stalcrest",
+      "tier": "thick",
+      "kind": "platform",
+      "date": "2018-10-15",
+      "year": 2018,
+      "sector": "consumer products & services",
+      "fund": "wcp-i",
+      "numbers": {
+        "revenue_m": 26.2,
+        "adj_ebitda_m": 5.5,
+        "adj_ebitda_margin_pct": 21.0,
+        "entry_multiple": 7.0,
+        "top_customer_pct": 12,
+        "entry_ev_m": 38.5,
+        "gross_logo_retention_pct": 92.4
+      },
+      "stage": "closed",
+      "outcome": "platform",
+      "kill_code": null,
+      "exit": null,
+      "distinguishing_fact": "Equestrian trailer and equipment manufacturer. The reference case.",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-tindmarch",
+      "firm": "westbrook",
+      "codename": "Tindmarch",
+      "tier": "thick",
+      "kind": "screen",
+      "date": "2016-04-12",
+      "year": 2016,
+      "sector": "business services",
+      "numbers": {
+        "revenue_m": 18.4,
+        "adj_ebitda_m": 4.1,
+        "adj_ebitda_margin_pct": 22.3,
+        "top_customer_pct": 44
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "C1",
+      "distinguishing_fact": "Single records-management contract with a county consortium at 44%.",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-craygarth",
+      "firm": "westbrook",
+      "codename": "Craygarth",
+      "tier": "thick",
+      "kind": "screen",
+      "date": "2022-03-08",
+      "year": 2022,
+      "sector": "business services",
+      "numbers": {
+        "revenue_m": 28.0,
+        "adj_ebitda_m": 6.2,
+        "adj_ebitda_margin_pct": 22.1,
+        "top_customer_pct": 82
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "C1",
+      "distinguishing_fact": "Education communications provider. One school-district co-op at 82% of revenue.",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-lantshaw",
+      "firm": "westbrook",
+      "codename": "Lantshaw",
+      "tier": "thick",
+      "kind": "late_stage",
+      "date": "2023-05-09",
+      "year": 2023,
+      "sector": "business services",
+      "numbers": {
+        "revenue_m": 41.0,
+        "adj_ebitda_m": 9.8,
+        "adj_ebitda_margin_pct": 23.9,
+        "top_customer_pct": 18,
+        "gross_logo_retention_pct": 84.2
+      },
+      "stage": "IOI",
+      "outcome": "walked",
+      "kill_code": null,
+      "distinguishing_fact": "Compliance print and mail. Marketed 85% recurring; 41% of it was re-bid annually.",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-marlin",
+      "firm": "westbrook",
+      "codename": "Marlin",
+      "tier": "thin",
+      "kind": null,
+      "date": "2023-02-14",
+      "year": 2023,
+      "sector": "healthcare services",
+      "numbers": {
+        "revenue_m": 24.0,
+        "adj_ebitda_m": 3.8,
+        "adj_ebitda_margin_pct": 15.8,
+        "top_customer_pct": 14
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "C2",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-quarborne",
+      "firm": "westbrook",
+      "codename": "Quarborne",
+      "tier": "thin",
+      "kind": null,
+      "date": "2023-06-21",
+      "year": 2023,
+      "sector": "healthcare services",
+      "numbers": {
+        "revenue_m": 33.0,
+        "adj_ebitda_m": 7.6,
+        "adj_ebitda_margin_pct": 23.0,
+        "top_customer_pct": 39
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "C1",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-pelican",
+      "firm": "westbrook",
+      "codename": "Pelican",
+      "tier": "thin",
+      "kind": null,
+      "date": "2023-09-05",
+      "year": 2023,
+      "sector": "healthcare services",
+      "numbers": {
+        "revenue_m": 27.5,
+        "adj_ebitda_m": 6.1,
+        "adj_ebitda_margin_pct": 22.2,
+        "top_customer_pct": 16
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "OWNER_DEP",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-thicket",
+      "firm": "westbrook",
+      "codename": "Thicket",
+      "tier": "thin",
+      "kind": null,
+      "date": "2023-11-30",
+      "year": 2023,
+      "sector": "specialty manufacturing",
+      "numbers": {
+        "revenue_m": 19.8,
+        "adj_ebitda_m": 3.4,
+        "adj_ebitda_margin_pct": 17.2,
+        "top_customer_pct": 21
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "C2",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-brindle",
+      "firm": "westbrook",
+      "codename": "Brindle",
+      "tier": "thin",
+      "kind": null,
+      "date": "2024-01-18",
+      "year": 2024,
+      "sector": "specialty manufacturing",
+      "numbers": {
+        "revenue_m": 15.2,
+        "adj_ebitda_m": 2.9,
+        "adj_ebitda_margin_pct": 19.1,
+        "top_customer_pct": 13
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "SIZE",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "wb-cobathwaite",
+      "firm": "westbrook",
+      "codename": "Cobathwaite",
+      "tier": "thin",
+      "kind": null,
+      "date": "2024-04-02",
+      "year": 2024,
+      "sector": "specialty manufacturing",
+      "numbers": {
+        "revenue_m": 22.0,
+        "adj_ebitda_m": 5.0,
+        "adj_ebitda_margin_pct": 22.7,
+        "top_customer_pct": 35
+      },
+      "stage": "screen",
+      "outcome": "pass",
+      "kill_code": "C1",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "hl-tallhaven",
+      "firm": "halloran",
+      "codename": "Tallhaven",
+      "tier": "thick",
+      "kind": "sell_side_process",
+      "date": "2016-05-24",
+      "year": 2016,
+      "sector": "specialty chemicals blending",
+      "numbers": {
+        "revenue_m": 19.6,
+        "adj_ebitda_m": 3.1,
+        "adj_ebitda_margin_pct": 15.8,
+        "recurring_pct": 41
+      },
+      "stage": "mandate",
+      "outcome": "closed",
+      "kill_code": null,
+      "full_cim": false,
+      "lead_risk": "two products are 46% of gross profit",
+      "lead_risk_mitigants": "both are specified into customer formulations; reformulation requires requalification",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "hl-anviwick",
+      "firm": "halloran",
+      "codename": "Anviwick",
+      "tier": "thick",
+      "kind": "sell_side_process",
+      "date": "2023-04-11",
+      "year": 2023,
+      "sector": "aerospace fastener distribution",
+      "numbers": {
+        "revenue_m": 27.4,
+        "adj_ebitda_m": 5.1,
+        "adj_ebitda_margin_pct": 18.6,
+        "recurring_pct": 70,
+        "top_customer_pct": 9
+      },
+      "stage": "mandate",
+      "outcome": "closed",
+      "kill_code": null,
+      "full_cim": true,
+      "lead_risk": "no customer above 9% but the top ten are 38% of revenue",
+      "lead_risk_mitigants": "design-in position requires re-certification to displace",
+      "hooks": [],
+      "related": []
+    },
+    {
+      "id": "hl-cedacombe",
+      "firm": "halloran",
+      "codename": "Cedacombe",
+      "tier": "thick",
+      "kind": "sell_side_process",
+      "date": "2024-06-20",
+      "year": 2024,
+      "sector": "regulated medical waste services",
+      "numbers": {
+        "revenue_m": 41.9,
+        "adj_ebitda_m": 9.6,
+        "adj_ebitda_margin_pct": 22.9,
+        "recurring_pct": 96,
+        "top_customer_pct": 4
+      },
+      "stage": "mandate",
+      "outcome": "closed",
+      "kill_code": null,
+      "full_cim": true,
+      "lead_risk": "route density is concentrated in three metros",
+      "lead_risk_mitigants": "multi-year service agreements with automatic renewal in each",
+      "hooks": [],
+      "related": []
+    }
+  ],
+  "holdout_targets": [
+    {
+      "id": "holdout-mini-000",
+      "firm": "westbrook",
+      "bucket": "discriminating",
+      "as_of": "2026-05-14",
+      "sector": "vertical SaaS",
+      "hq_region": "south_central",
+      "hq_state": "TX",
+      "us_headquartered": true,
+      "revenue_m": 57.1,
+      "adj_ebitda_m": 17.0,
+      "adj_ebitda_margin_pct": 29.7,
+      "top_customer_pct": 11,
+      "top3_customer_pct": 39,
+      "gross_logo_retention_pct": 88.8,
+      "logo_churn_pct": 11.2,
+      "funded_debt_at_close": false,
+      "process_type": "broad_auction",
+      "buyers_invited": 21,
+      "source_channel": "direct_owner",
+      "seller_rollover_pct": 20,
+      "seller_role_post_close": "exits",
+      "owner_age": 71,
+      "owner_holds_top_relationships": false,
+      "recurring_pct": 54,
+      "customer_count": 1328,
+      "employees": 912,
+      "growth_pct": 20.8,
+      "capex_pct_revenue": 5.0,
+      "owner_expectation_multiple": 8.2,
+      "indicative_high_multiple": 7.5,
+      "written_criteria_verdict": "advance",
+      "written_criteria_failures": [],
+      "ground_truth_outcome": "pass",
+      "driving_rule_ids": [
+        "RULE-F2"
+      ],
+      "discriminates": true
+    },
+    {
+      "id": "holdout-mini-001",
+      "firm": "westbrook",
+      "bucket": "discriminating",
+      "as_of": "2026-06-02",
+      "sector": "specialty manufacturing",
+      "hq_region": "midwest",
+      "hq_state": "OH",
+      "us_headquartered": true,
+      "revenue_m": 44.3,
+      "adj_ebitda_m": 10.2,
+      "adj_ebitda_margin_pct": 23.0,
+      "top_customer_pct": 22,
+      "top3_customer_pct": 44,
+      "gross_logo_retention_pct": 95.4,
+      "logo_churn_pct": 4.6,
+      "funded_debt_at_close": false,
+      "process_type": "proprietary",
+      "buyers_invited": 8,
+      "source_channel": "referral",
+      "seller_rollover_pct": 25,
+      "seller_role_post_close": "stays 24 months",
+      "owner_age": 58,
+      "owner_holds_top_relationships": false,
+      "recurring_pct": 61,
+      "customer_count": 240,
+      "employees": 310,
+      "growth_pct": 11.4,
+      "capex_pct_revenue": 4.1,
+      "owner_expectation_multiple": 7.6,
+      "indicative_high_multiple": 7.4,
+      "written_criteria_verdict": "advance",
+      "written_criteria_failures": [],
+      "ground_truth_outcome": "pass",
+      "driving_rule_ids": [
+        "RULE-F1"
+      ],
+      "discriminates": true
+    },
+    {
+      "id": "holdout-mini-002",
+      "firm": "westbrook",
+      "bucket": "clean_advance",
+      "as_of": "2026-04-19",
+      "sector": "business services",
+      "hq_region": "northeast",
+      "hq_state": "PA",
+      "us_headquartered": true,
+      "revenue_m": 38.9,
+      "adj_ebitda_m": 9.5,
+      "adj_ebitda_margin_pct": 24.4,
+      "top_customer_pct": 9,
+      "top3_customer_pct": 24,
+      "gross_logo_retention_pct": 95.2,
+      "logo_churn_pct": 4.8,
+      "funded_debt_at_close": false,
+      "process_type": "proprietary",
+      "buyers_invited": 6,
+      "source_channel": "referral",
+      "seller_rollover_pct": 30,
+      "seller_role_post_close": "stays 36 months",
+      "owner_age": 54,
+      "owner_holds_top_relationships": false,
+      "recurring_pct": 72,
+      "customer_count": 480,
+      "employees": 265,
+      "growth_pct": 13.9,
+      "capex_pct_revenue": 3.2,
+      "owner_expectation_multiple": 7.1,
+      "indicative_high_multiple": 7.4,
+      "written_criteria_verdict": "advance",
+      "written_criteria_failures": [],
+      "ground_truth_outcome": "advance",
+      "driving_rule_ids": [],
+      "discriminates": false
+    },
+    {
+      "id": "holdout-mini-003",
+      "firm": "westbrook",
+      "bucket": "clean_pass",
+      "as_of": "2026-03-27",
+      "sector": "business services",
+      "hq_region": "west",
+      "hq_state": "CA",
+      "us_headquartered": true,
+      "revenue_m": 33.2,
+      "adj_ebitda_m": 8.1,
+      "adj_ebitda_margin_pct": 24.4,
+      "top_customer_pct": 41,
+      "top3_customer_pct": 66,
+      "gross_logo_retention_pct": 94.1,
+      "logo_churn_pct": 5.9,
+      "funded_debt_at_close": false,
+      "process_type": "broad_auction",
+      "buyers_invited": 30,
+      "source_channel": "new_intermediary",
+      "seller_rollover_pct": 0,
+      "seller_role_post_close": "exits",
+      "owner_age": 66,
+      "owner_holds_top_relationships": true,
+      "recurring_pct": 58,
+      "customer_count": 95,
+      "employees": 190,
+      "growth_pct": 8.2,
+      "capex_pct_revenue": 2.9,
+      "owner_expectation_multiple": 9.0,
+      "indicative_high_multiple": 7.0,
+      "written_criteria_verdict": "pass",
+      "written_criteria_failures": [
+        "C1"
+      ],
+      "ground_truth_outcome": "pass",
+      "driving_rule_ids": [],
+      "discriminates": false
+    }
+  ],
+  "implicit_rules": [
+    {
+      "id": "RULE-F1",
+      "firm": "westbrook",
+      "statement": "Fixture rule F1. A concentration threshold that is stricter in practice than the published screen. The operative figures are a property of the corpus and are not reproduced in this fixture; this text exists so the grader has a rule record of the right shape to key on.",
+      "enforce": "platform: top<=15 and top3<=35; band 16..29 may never be killed on C1 and may never close",
+      "paraphrases": [
+        "the real concentration line sits well inside the stated screen",
+        "the band that never closes"
+      ]
+    },
+    {
+      "id": "RULE-F2",
+      "firm": "westbrook",
+      "statement": "Fixture rule F2. A retention threshold applied at a later stage than the published screen. The operative figures are a property of the corpus and are not reproduced in this fixture; this text exists so the grader has a rule record of the right shape to key on.",
+      "enforce": "closed: grr>=93.0; reached IOI/LOI: grr>=90.0; grr<88: screen-pass only",
+      "paraphrases": [
+        "the retention floor is the thing that actually decides",
+        "not something that gets underwritten here"
+      ]
+    }
+  ],
+  "house_rules": [
+    {
+      "id": "HR-01",
+      "firm": "halloran",
+      "added_date": "2015-01-05",
+      "rule": "Executive summary section order: company statement, business and moat, customer stickiness, financial highlights."
+    },
+    {
+      "id": "HR-02",
+      "firm": "halloran",
+      "added_date": "2015-01-05",
+      "rule": "Never present management projections in an executive summary. Actuals only."
+    },
+    {
+      "id": "HR-03",
+      "firm": "halloran",
+      "added_date": "2015-01-05",
+      "rule": "Plain English. If a phrase would embarrass you read aloud to the founder, cut it."
+    },
+    {
+      "id": "HR-04",
+      "firm": "halloran",
+      "added_date": "2015-01-05",
+      "rule": "No stacked superlatives. One strong claim beats three inflated ones."
+    },
+    {
+      "id": "HR-05",
+      "firm": "halloran",
+      "added_date": "2016-03-14",
+      "rule": "Numbers in $M with one decimal. Margins to one decimal."
+    },
+    {
+      "id": "HR-06",
+      "firm": "halloran",
+      "added_date": "2017-02-06",
+      "rule": "Retention and recurring-revenue figures appear only when contractually verifiable."
+    },
+    {
+      "id": "HR-07",
+      "firm": "halloran",
+      "added_date": "2018-11-06",
+      "rule": "Name the client's biggest risk in the materials, paired with mitigants, before a buyer finds it."
+    },
+    {
+      "id": "HR-08",
+      "firm": "halloran",
+      "added_date": "2019-09-17",
+      "rule": "For services businesses, lead with customer relationships and tenure. The technology is a supporting paragraph."
+    }
+  ],
+  "criteria_versions": [
+    {
+      "version": "v1",
+      "date": "2016-02-01",
+      "note": "Founding criteria: mandate, C1-C4, preferences, process notes."
+    },
+    {
+      "version": "v2",
+      "date": "2022-06-01",
+      "note": "Concentration language hardened after Craygarth."
+    }
+  ],
+  "timeline": [
+    {
+      "date": "2016-01-04",
+      "event_type": "firm_founded",
+      "deal": null,
+      "description": "Westbrook Capital Partners founded."
+    },
+    {
+      "date": "2022-03-08",
+      "event_type": "screen_pass",
+      "deal": "Craygarth",
+      "description": "Passed on Craygarth at 82% customer concentration."
+    }
+  ],
+  "portfolio_companies": [
+    {
+      "id": "pc-kilnmouth",
+      "deal_codename": "Kilnmouth",
+      "name": "Ardent Group",
+      "sector": "specialty manufacturing",
+      "acquired": "2017-05-18",
+      "exited": "2023-09-12",
+      "fund": "wcp-i",
+      "hq_state": "NJ",
+      "entry_revenue_m": 22.6,
+      "entry_margin_pct": 21.2
+    },
+    {
+      "id": "pc-foxgworth",
+      "deal_codename": "Foxgworth",
+      "name": "Bellwether Brands",
+      "sector": "consumer products & services",
+      "acquired": "2020-06-30",
+      "exited": "2025-03-14",
+      "fund": "wcp-i",
+      "hq_state": "OR",
+      "entry_revenue_m": 31.4,
+      "entry_margin_pct": 22.6
+    }
+  ],
+  "pc_periods": [],
+  "clients": [],
+  "pitches": [],
+  "buyers": [],
+  "stated_counts": [],
+  "analyst_never_signs": [
+    "hl-anand"
+  ],
+  "canon": {
+    "frozen_facts": {
+      "westbrook_mandate": {
+        "revenue_range_m": [
+          20,
+          150
+        ],
+        "min_adj_ebitda_m": 4.0,
+        "position": "control only",
+        "sectors_in": [
+          "business services",
+          "consumer products & services",
+          "healthcare services",
+          "specialty manufacturing",
+          "vertical SaaS"
+        ],
+        "sectors_out": [
+          "biotech",
+          "energy",
+          "project-based construction"
+        ]
+      },
+      "westbrook_screens": {
+        "C1": "no customer above 30% of revenue",
+        "C2": "adjusted EBITDA margin above 20%",
+        "C3": "no funded debt at close",
+        "C4": "US-headquartered only"
+      },
+      "westbrook_page_one_order": [
+        "concentration",
+        "contract quality",
+        "owner dependence"
+      ],
+      "halloran_exec_summary_section_order": [
+        "one-sentence company statement",
+        "business description and moat",
+        "customer stickiness",
+        "financial highlights, actuals only"
+      ]
+    }
+  }
+}

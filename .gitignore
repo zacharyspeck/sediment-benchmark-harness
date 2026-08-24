@@ -1,0 +1,97 @@
+# =====================================================================
+# This repository is the PUBLIC half of a benchmark whose corpus, answer
+# keys and rule definitions are deliberately withheld. Everything below
+# either is private material or is a place private material lands. Adding
+# a path here is cheaper than removing it from history later.
+# =====================================================================
+
+# ---------------------------------------------------- private benchmark material
+# Generated item sets: every item carries its gold answer.
+data/
+items-v*.json
+*-items.json
+
+# Family 4's holdout targets and pool: every target carries ground truth.
+holdout-*.json
+holdout-*.jsonl
+
+# Answer keys, verdict sheets and anything named like one.
+ANSWERS.md
+ANSWERS*.md
+*-ANSWERS.md
+answers.json
+gold*.json
+*-gold.json
+demo-inputs/
+
+# Rule definitions supplied beside the private pool. The harness reads these
+# when present and runs without them; they must never be committed here.
+config/boundary_gaps.json
+config/lever_fields.yaml
+
+# Build reports and pre-registration: these describe rule behaviour in prose.
+PRE-REGISTRATION.md
+BUILD-REPORT.md
+build-report*.md
+benchmark-report.md
+capacity-delta*.md
+degeneracy*.md
+leak-check*.md
+phase*-*.md
+phase*-*.txt
+implementation-notes.md
+CAPACITY.md
+capacity.json
+
+# The corpus itself, if it is ever checked out or linked inside this tree.
+corpus/
+corpus-v*/
+ledger-v*/
+sediment-corpus/
+
+# ---------------------------------------------------- run output
+results/
+logs/
+*.log
+summary.json
+report.md
+
+# ---------------------------------------------------- secrets
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa*
+credentials.json
+secrets.*
+.netrc
+
+# ---------------------------------------------------- python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# ---------------------------------------------------- editors / os
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# ---------------------------------------------------- agent tooling
+CLAUDE.md
+.claude/
+.cursor/
+.aider*

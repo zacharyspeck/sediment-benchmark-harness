@@ -1,0 +1,65 @@
+# GRADING AND REPORTING CONFIGURATION
+#
+# Tolerances resolve in this order, last wins:
+#   defaults.tolerance  ->  families.<family>.tolerance  ->  item.grading.tolerance
+#
+# A tolerance is a pass if EITHER bound is met:
+#   |answer - gold| <= abs      OR      |answer - gold| / |gold| <= rel
+
+defaults:
+  tolerance:
+    abs: 0.05
+    rel: 0.01
+
+families:
+
+  single_fact_recall:
+    tolerance:
+      abs: 0.05      # one-decimal restatement of a ledger figure
+      rel: 0.005
+    notes: >-
+      Tight on purpose. The gold value is a literal ledger field, so the only
+      slack needed is display rounding, not estimation.
+
+  multi_doc_aggregation:
+    tolerance:
+      abs: 0.1
+      rel: 0.02
+    notes: >-
+      Looser: the corpus restates some percentages as integers, so a correct
+      aggregation can land a few basis points out. Still tight enough that
+      dropping one deal from a ten-deal average fails.
+
+  corpus_wide_statistic:
+    tolerance:
+      abs: 0.1
+      rel: 0.02
+    notes: >-
+      Counts override this to exact (abs=0, rel=0) in the grader whenever the
+      gold unit is `count`. A tolerance on a count awards credit for
+      miscounting.
+
+  implicit_rule_application:
+    notes: Categorical verdict match. No numeric tolerance applies.
+
+  convention_conformance:
+    notes: >-
+      Fractional score = passed / applicable checklist items. Not a Bernoulli
+      trial, so the report gives it a bootstrap interval, not Wilson.
+
+  absence_and_abstention:
+    notes: >-
+      Scores 1.0 only when the verdict is right AND no thesis was invented.
+
+reporting:
+  # Every arm is compared against this one, so an ablation run (cartridge on/off,
+  # search on/off) reads exactly like a two-arm run. Unset = the first arm.
+  baseline_arm: claude
+  confidence: 0.95
+  bootstrap_seed: 20260818        # fixed so every report is reproducible
+  bootstrap_iters: 10000
+  extraction_uncertain_threshold: 0.05
+  # Above the threshold the fix is a stronger format instruction in the prompt,
+  # NOT a cleverer fallback extractor. A smarter fallback silently converts a
+  # formatting failure into a correctness score.
+  min_items_for_claim: 25

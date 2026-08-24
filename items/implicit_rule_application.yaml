@@ -1,0 +1,377 @@
+# =====================================================================
+# FAMILY 4 -- implicit_rule_application
+#
+# One of six families of EQUAL STANDING. This file used to open by declaring
+# itself the headline; it is not. The six are reported side by side and never
+# averaged, and this family in particular is the one whose score currently
+# needs the most caveats -- see the constant-answer baseline.
+#
+# A holdout target that appears in NO document. Given its facts, does it pass
+# the screen? The written criteria say one thing; the firm's actual behaviour
+# says another. Gold is the outcome under the implicit rules, taken from
+# holdout_targets[]. Grader: categorical match on the verdict.
+#
+# ---------------------------------------------------------------------
+# WHY THE BUCKET FIELD DECIDES EVERYTHING
+# ---------------------------------------------------------------------
+# holdout_targets[] carries three buckets:
+#
+#   discriminating   written criteria and actual behaviour DISAGREE.
+#                    Only these separate a system that absorbed the firm's
+#                    behaviour from one that read the published criteria.
+#   clean_advance    both say advance.
+#   clean_pass       both say pass.
+#
+# A system that does nothing but apply the written screens scores 100% on the
+# clean buckets and 0% on the discriminating one. Because roughly half the
+# holdout set is clean, that system lands near 50% overall -- which looks like
+# a middling result and is actually a total failure at the thing being
+# measured.
+#
+# So: KEEP THE BUCKETS IN A KNOWN RATIO AND REPORT THEM SEPARATELY. The
+# report already breaks accuracy out by bucket and prints how often each arm
+# answered what the written criteria alone would say. Do not sample these
+# templates into one undifferentiated pool of 25.
+#
+# The clean templates are not filler. They are the control: an arm that scores
+# poorly on clean_advance is not applying the criteria at all, and its
+# discriminating score cannot be interpreted as behavioural knowledge.
+#
+# ---------------------------------------------------------------------
+# HOW TO ADD A TEMPLATE
+# ---------------------------------------------------------------------
+#   - id: ira-06
+#     difficulty: hard
+#     answer_type: categorical
+#     questions: ["...{{revenue_m}}..."]      # slots pull from the holdout row
+#     slots: {revenue_m: revenue_m, ...}      # shorthand: slot <- row field
+#     selector:
+#       source: holdout_targets
+#       where: {bucket: discriminating, firm: westbrook}
+#     gold:
+#       path: ground_truth_outcome
+#       accept: {pass: [...], advance: [...]}
+#     meta_from:                              # copied onto the item for the
+#       holdout_id: id                        # grader's trace and the report's
+#       bucket: bucket                        # bucket breakout
+#       discriminates: discriminates
+#       written_criteria_verdict: written_criteria_verdict
+#       driving_rule_ids: driving_rule_ids
+#
+# `meta_from` is what makes the bucket breakout possible. A template without
+# it still grades, but its items vanish from the discriminating/clean split.
+# =====================================================================
+
+family: implicit_rule_application
+version: 1
+
+answer_format: |
+  ANSWER: <advance or pass>
+  <then normal prose reasoning>
+
+# Every template shares this fact block. Keep it identical across templates:
+# if the arms see different fact presentations per template, a bucket
+# difference becomes indistinguishable from a formatting difference.
+# WHY EVERY FIELD A RULE READS MUST BE PRINTED (added 2026-08-20)
+# ---------------------------------------------------------------
+# A target is admissible only if every field its firing rule reads appears in
+# the fact block below. This is not a formality. If a rule turns on a field the
+# block does not print, two targets with byte-identical printed facts can carry
+# opposite gold -- the item is not hard, it is undecidable, and an arm that got
+# it right got it right by guessing. Fields are INPUTS: printing a deal's own
+# attributes is not printing the rule, and a reader of the published criteria
+# alone cannot resolve these items from the block.
+#
+# WHICH fields each rule reads is a property of the corpus and is NOT recorded
+# in this file. See the note at `lever_fields` below.
+fact_block: |
+  A new opportunity has come in. Nothing about it appears in any file.
+
+    As of:                         {{as_of}}
+    Add-on beneath a platform:     {{is_add_on}}
+    Sector:                        {{sector}}
+    US headquartered:              {{us_headquartered}}
+    Revenue:                       ${{revenue_m}}M
+    Adjusted EBITDA:               ${{adj_ebitda_m}}M
+    Adjusted EBITDA margin:        {{adj_ebitda_margin_pct}}%
+    Top customer:                  {{top_customer_pct}}% of revenue
+    Top three customers:           {{top3_customer_pct}}% of revenue
+    Gross logo retention:          {{gross_logo_retention_pct}}%
+    Funded debt at close:          {{funded_debt_at_close}}
+    Recurring revenue:             {{recurring_pct}}%
+    Revenue growth:                {{growth_pct}}%
+    Owner age:                     {{owner_age}}
+    Owner holds top relationships: {{owner_holds_top_relationships}}
+    Seller rollover:               {{seller_rollover_pct}}%
+    Seller role post-close:        {{seller_role_post_close}}
+    Process:                       {{process_type}}
+    Capex:                         {{capex_pct_revenue}}% of revenue
+
+# WHICH FIELD DECIDES EACH RULE  --  the lever map
+# --------------------------------------------------
+# The unit of independence for this family is (firing rule-set, lever bin), and
+# a target is ADMISSIBLE ONLY IF ITS LEVER IS PRINTED IN THE FACT BLOCK ABOVE.
+# `harness/capacity.py:printed_fields` derives the printed set from the fact
+# block itself rather than from a hand-kept list, so this cannot drift.
+#
+# `bin` is the coarsest step a reader could still act on differently. Two
+# targets 0.1pp apart on a percentage lever are the same item; binning is what
+# stops near-duplicates from being counted as capacity. A rule may read more
+# than one field, and every field it reads must be listed or the unit key is
+# wrong.
+#
+# THE MAP ITSELF IS NOT PUBLISHED. Naming the fields each rule reads would let
+# a reader resolve the family without consulting the corpus, which is the whole
+# thing this family measures. The real map ships beside the private pool as
+# `config/lever_fields.yaml`, in exactly the shape shown by this empty stub, and
+# `harness.capacity.load_lever_fields()` merges it in when present. With no such
+# file the map is empty, every discriminating target rejects as "lever not
+# printed", and the family measures zero rather than silently measuring the
+# wrong population.
+lever_fields: {}
+
+# ACCEPTED SURFACE FORMS
+# ----------------------
+# Not repeated per template. graders/implicit_rule_application.py ships a
+# DEFAULT_ACCEPT map covering the ordinary ways a model phrases each verdict
+# ("we pass", "decline", "would not advance" -> pass; "proceed", "pursue",
+# "move forward" -> advance). A template only needs its own `gold.accept`
+# block to ADD forms; whatever it lists is merged with the defaults rather
+# than replacing them.
+#
+# YAML anchors are deliberately not used anywhere in this repo -- the
+# dependency-free fallback parser in harness/_minyaml.py does not support
+# them, and a template file that only loads when PyYAML is installed is a
+# trap. Repeat yourself instead.
+
+templates:
+
+  - id: ira-01-discriminating-westbrook
+    difficulty: hard
+    bucket_role: discriminating
+    answer_type: categorical
+    questions:
+      - "{{fact_block}}\n\nDoes Westbrook advance this or pass? Answer with one word."
+      - "{{fact_block}}\n\nWould Westbrook take this forward? Advance or pass?"
+    slots:
+      as_of: as_of
+      is_add_on: is_add_on
+      sector: sector
+      us_headquartered: us_headquartered
+      revenue_m: revenue_m
+      adj_ebitda_m: adj_ebitda_m
+      adj_ebitda_margin_pct: adj_ebitda_margin_pct
+      top_customer_pct: top_customer_pct
+      top3_customer_pct: top3_customer_pct
+      gross_logo_retention_pct: gross_logo_retention_pct
+      funded_debt_at_close: funded_debt_at_close
+      recurring_pct: recurring_pct
+      growth_pct: growth_pct
+      owner_age: owner_age
+      owner_holds_top_relationships: owner_holds_top_relationships
+      seller_rollover_pct: seller_rollover_pct
+      seller_role_post_close: seller_role_post_close
+      process_type: process_type
+      capex_pct_revenue: capex_pct_revenue
+    selector:
+      source: holdout_targets
+      where:
+        firm: westbrook
+        bucket: discriminating
+    gold:
+      path: ground_truth_outcome
+      unit: none
+    meta_from:
+      holdout_id: id
+      bucket: bucket
+      discriminates: discriminates
+      written_criteria_verdict: written_criteria_verdict
+      written_criteria_failures: written_criteria_failures
+      driving_rule_ids: driving_rule_ids
+    notes: >-
+      The discriminating template. Every item here has a written-criteria answer that
+      is wrong. An arm that reasons only from the published screens scores zero
+      on this template by construction.
+
+  - id: ira-02-clean-advance-control
+    difficulty: easy
+    bucket_role: control
+    answer_type: categorical
+    questions:
+      - "{{fact_block}}\n\nDoes Westbrook advance this or pass? Answer with one word."
+    slots:
+      as_of: as_of
+      is_add_on: is_add_on
+      sector: sector
+      us_headquartered: us_headquartered
+      revenue_m: revenue_m
+      adj_ebitda_m: adj_ebitda_m
+      adj_ebitda_margin_pct: adj_ebitda_margin_pct
+      top_customer_pct: top_customer_pct
+      top3_customer_pct: top3_customer_pct
+      gross_logo_retention_pct: gross_logo_retention_pct
+      funded_debt_at_close: funded_debt_at_close
+      recurring_pct: recurring_pct
+      growth_pct: growth_pct
+      owner_age: owner_age
+      owner_holds_top_relationships: owner_holds_top_relationships
+      seller_rollover_pct: seller_rollover_pct
+      seller_role_post_close: seller_role_post_close
+      process_type: process_type
+      capex_pct_revenue: capex_pct_revenue
+    selector:
+      source: holdout_targets
+      where:
+        firm: westbrook
+        bucket: clean_advance
+    gold:
+      path: ground_truth_outcome
+      unit: none
+    meta_from:
+      holdout_id: id
+      bucket: bucket
+      discriminates: discriminates
+      written_criteria_verdict: written_criteria_verdict
+      driving_rule_ids: driving_rule_ids
+    notes: >-
+      Control. An arm that cannot clear this is not applying the criteria at
+      all, and its discriminating score means nothing.
+
+  - id: ira-03-clean-pass-control
+    difficulty: easy
+    bucket_role: control
+    answer_type: categorical
+    questions:
+      - "{{fact_block}}\n\nDoes Westbrook advance this or pass? Answer with one word."
+    slots:
+      as_of: as_of
+      is_add_on: is_add_on
+      sector: sector
+      us_headquartered: us_headquartered
+      revenue_m: revenue_m
+      adj_ebitda_m: adj_ebitda_m
+      adj_ebitda_margin_pct: adj_ebitda_margin_pct
+      top_customer_pct: top_customer_pct
+      top3_customer_pct: top3_customer_pct
+      gross_logo_retention_pct: gross_logo_retention_pct
+      funded_debt_at_close: funded_debt_at_close
+      recurring_pct: recurring_pct
+      growth_pct: growth_pct
+      owner_age: owner_age
+      owner_holds_top_relationships: owner_holds_top_relationships
+      seller_rollover_pct: seller_rollover_pct
+      seller_role_post_close: seller_role_post_close
+      process_type: process_type
+      capex_pct_revenue: capex_pct_revenue
+    selector:
+      source: holdout_targets
+      where:
+        firm: westbrook
+        bucket: clean_pass
+    gold:
+      path: ground_truth_outcome
+      unit: none
+    meta_from:
+      holdout_id: id
+      bucket: bucket
+      discriminates: discriminates
+      written_criteria_verdict: written_criteria_verdict
+      written_criteria_failures: written_criteria_failures
+      driving_rule_ids: driving_rule_ids
+    notes: >-
+      Control in the other direction: a target that fails a written screen
+      outright. Catches an arm that has learned to answer "pass" reflexively.
+
+  - id: ira-04-retention-floor
+    difficulty: hard
+    bucket_role: discriminating
+    answer_type: categorical
+    questions:
+      - "{{fact_block}}\n\nDoes Westbrook advance this or pass? Answer with one word."
+    slots:
+      as_of: as_of
+      is_add_on: is_add_on
+      sector: sector
+      us_headquartered: us_headquartered
+      revenue_m: revenue_m
+      adj_ebitda_m: adj_ebitda_m
+      adj_ebitda_margin_pct: adj_ebitda_margin_pct
+      top_customer_pct: top_customer_pct
+      top3_customer_pct: top3_customer_pct
+      gross_logo_retention_pct: gross_logo_retention_pct
+      funded_debt_at_close: funded_debt_at_close
+      recurring_pct: recurring_pct
+      growth_pct: growth_pct
+      owner_age: owner_age
+      owner_holds_top_relationships: owner_holds_top_relationships
+      seller_rollover_pct: seller_rollover_pct
+      seller_role_post_close: seller_role_post_close
+      process_type: process_type
+      capex_pct_revenue: capex_pct_revenue
+    selector:
+      source: holdout_targets
+      where:
+        driving_rule_ids: {op: list_contains, value: IR-WB-02}
+    gold:
+      path: ground_truth_outcome
+      unit: none
+    meta_from:
+      holdout_id: id
+      bucket: bucket
+      discriminates: discriminates
+      written_criteria_verdict: written_criteria_verdict
+      driving_rule_ids: driving_rule_ids
+    notes: >-
+      Targets whose outcome turns on the retention floor -- a threshold that no
+      document states. Isolating one rule makes it possible to say WHICH piece
+      of behaviour a system did or did not absorb, instead of only that it
+      scored 6/10.
+
+  - id: ira-05-halloran
+    difficulty: hard
+    bucket_role: discriminating
+    answer_type: categorical
+    questions:
+      - "{{fact_block}}\n\nWould Halloran take this mandate, or resign it? Answer with one word: advance or pass."
+    slots:
+      as_of: as_of
+      is_add_on: is_add_on
+      sector: sector
+      us_headquartered: us_headquartered
+      revenue_m: revenue_m
+      adj_ebitda_m: adj_ebitda_m
+      adj_ebitda_margin_pct: adj_ebitda_margin_pct
+      top_customer_pct: top_customer_pct
+      top3_customer_pct: top3_customer_pct
+      gross_logo_retention_pct: gross_logo_retention_pct
+      funded_debt_at_close: funded_debt_at_close
+      recurring_pct: recurring_pct
+      growth_pct: growth_pct
+      owner_age: owner_age
+      owner_holds_top_relationships: owner_holds_top_relationships
+      seller_rollover_pct: seller_rollover_pct
+      seller_role_post_close: seller_role_post_close
+      process_type: process_type
+      capex_pct_revenue: capex_pct_revenue
+    selector:
+      source: holdout_targets
+      where:
+        firm: halloran
+    gold:
+      path: ground_truth_outcome
+      unit: none
+    meta_from:
+      holdout_id: id
+      bucket: bucket
+      discriminates: discriminates
+      written_criteria_verdict: written_criteria_verdict
+      driving_rule_ids: driving_rule_ids
+    notes: >-
+      The sell-side firm's implicit rules are different in kind -- they concern
+      whether to take a mandate rather than whether to buy. Including them
+      tests whether a system learned two behavioural models or blurred them
+      into one.
+      NOTE: the fact block is shared with the Westbrook templates and carries
+      buy-side fields. If a Halloran-specific block is wanted, add it as its
+      own key and reference it here -- but change it for ALL Halloran
+      templates at once, never for some.
